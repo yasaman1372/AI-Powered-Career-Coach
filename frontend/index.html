@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#153f34">
+  <meta name="description" content="A practical career coach for interview practice, CV feedback, and career decisions.">
+  <title>Career Coach</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #192721;
+      --muted: #6e7a73;
+      --line: #dce4dd;
+      --paper: #fbfcf9;
+      --wash: #f0f4ef;
+      --pine: #153f34;
+      --pine-soft: #e4eee8;
+      --lime: #d9f477;
+      --rust: #bd674b;
+      --rust-soft: #f6e9e4;
+      --white: #ffffff;
+      --shadow: 0 18px 46px rgba(25, 39, 33, 0.08);
+      font-family: "DM Sans", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--wash);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    button, input, textarea { font: inherit; }
+    button { color: inherit; }
+
+    .layout {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+    }
+
+    .rail {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      padding: 27px 20px 20px;
+      overflow: hidden;
+      color: #f4f8f3;
+      background: var(--pine);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 0 4px;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border-radius: 12px 12px 12px 4px;
+      color: var(--pine);
+      background: var(--lime);
+      font-family: "Fraunces", serif;
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .brand-name { font-size: 15px; font-weight: 700; }
+    .brand-caption {
+      margin-top: 3px;
+      color: #b6c9bd;
+      font-family: "DM Mono", monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+    }
+
+    .new-chat {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      margin-top: 43px;
+      padding: 12px 13px;
+      border: 1px solid rgba(240, 248, 240, 0.28);
+      border-radius: 7px;
+      color: var(--white);
+      background: transparent;
+      cursor: pointer;
+      transition: background 160ms ease, border-color 160ms ease;
+    }
+
+    .new-chat:hover { border-color: var(--lime); background: rgba(255,255,255,0.07); }
+    .new-chat span:first-child { font-size: 13px; font-weight: 600; }
+    .new-chat span:last-child { color: var(--lime); font-size: 19px; line-height: 1; }
+
+    .rail-label {
+      margin: 30px 4px 12px;
+      color: #a9beb2;
+      font-family: "DM Mono", monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+    }
+
+    .service-list { display: grid; gap: 5px; }
+
+    .service-link {
+      display: grid;
+      grid-template-columns: 27px 1fr;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      padding: 9px 8px;
+      border: 0;
+      border-radius: 6px;
+      color: #e4eee7;
+      text-align: left;
+      background: transparent;
+      cursor: pointer;
+      transition: background 160ms ease;
+    }
+
+    .service-link:hover { background: rgba(255,255,255,0.1); }
+    .service-index {
+      display: grid;
+      width: 25px;
+      height: 25px;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 50%;
+      color: var(--lime);
+      font-family: "DM Mono", monospace;
+      font-size: 10px;
+    }
+
+    .service-link strong { display: block; font-size: 12px; font-weight: 600; }
+    .service-link small { display: block; margin-top: 2px; color: #afc3b7; font-size: 10px; }
+
+    .rail-photo {
+      position: relative;
+      height: 151px;
+      margin-top: auto;
+      overflow: hidden;
+      border-radius: 7px;
+      background: #285748;
+    }
+
+    .rail-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.82;
+    }
+
+    .photo-caption {
+      position: absolute;
+      right: 9px;
+      bottom: 9px;
+      left: 9px;
+      padding: 7px 9px;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 4px;
+      color: white;
+      background: rgba(21, 63, 52, 0.72);
+      font-family: "DM Mono", monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+      backdrop-filter: blur(8px);
+    }
+
+    .rail-foot {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 16px;
+      color: #b6c9bd;
+      font-family: "DM Mono", monospace;
+      font-size: 9px;
+    }
+
+    .workspace {
+      display: flex;
+      min-width: 0;
+      min-height: 100vh;
+      flex-direction: column;
+      background-color: var(--paper);
+      background-image: radial-gradient(#dbe5dc 0.7px, transparent 0.7px);
+      background-size: 19px 19px;
+    }
+
+    .topbar {
+      display: flex;
+      min-height: 76px;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 14px clamp(18px, 4vw, 54px);
+      border-bottom: 1px solid rgba(205, 218, 207, 0.82);
+      background: rgba(251, 252, 249, 0.91);
+      backdrop-filter: blur(12px);
+    }
+
+    .crumb {
+      color: var(--muted);
+      font-family: "DM Mono", monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .page-name { margin-top: 4px; font-size: 14px; font-weight: 700; }
+
+    .top-actions { display: flex; align-items: center; gap: 13px; }
+
+    .endpoint-form {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .endpoint-form input {
+      width: min(220px, 25vw);
+      padding: 8px 9px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      outline: none;
+      color: var(--ink);
+      background: white;
+      font-family: "DM Mono", monospace;
+      font-size: 10px;
+    }
+
+    .endpoint-form input:focus { border-color: var(--pine); box-shadow: 0 0 0 3px rgba(21,63,52,0.1); }
+
+    .save-endpoint {
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 5px;
+      color: white;
+      background: var(--pine);
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .save-endpoint:hover { background: #245b49; }
+
+    .thread-wrap {
+      width: min(100%, 950px);
+      flex: 1;
+      margin: 0 auto;
+      padding: 34px clamp(17px, 5vw, 66px) 26px;
+    }
+
+    .session-kicker {
+      margin: 0 0 22px 48px;
+      color: #758279;
+      font-family: "DM Mono", monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+    }
+
+    .welcome {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 12px;
+      margin-bottom: 26px;
+      animation: rise 420ms ease both;
+    }
+
+    .coach-mark {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border-radius: 12px 12px 12px 4px;
+      color: var(--pine);
+      background: var(--lime);
+      font-family: "Fraunces", serif;
+      font-size: 18px;
+    }
+
+    .welcome-body { max-width: 620px; }
+    .welcome-title {
+      margin: 1px 0 9px;
+      font-family: "Fraunces", serif;
+      font-size: clamp(26px, 3.3vw, 39px);
+      font-weight: 500;
+      line-height: 1.08;
+    }
+
+    .welcome-copy {
+      max-width: 530px;
+      margin: 0;
+      color: #59675f;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .starter-label {
+      margin: 30px 0 10px;
+      color: var(--muted);
+      font-family: "DM Mono", monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+    }
+
+    .starter-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .starter {
+      min-height: 93px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      text-align: left;
+      background: rgba(255,255,255,0.88);
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .starter:hover {
+      transform: translateY(-2px);
+      border-color: #8ea99a;
+      box-shadow: 0 9px 22px rgba(25,39,33,0.07);
+    }
+
+    .starter span { display: block; }
+    .starter-title { font-size: 12px; font-weight: 700; }
+    .starter-copy { margin-top: 7px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+    .starter-arrow { margin-top: 9px; color: var(--rust); font-size: 13px; }
+
+    .messages { display: grid; gap: 20px; }
+
+    .message {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 12px;
+      animation: rise 260ms ease both;
+    }
+
+    .message.user { grid-template-columns: 1fr; }
+
+    .message-avatar {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 11px 11px 11px 4px;
+      color: var(--pine);
+      background: var(--lime);
+      font-family: "Fraunces", serif;
+      font-size: 17px;
+    }
+
+    .message-content { min-width: 0; max-width: 690px; }
+
+    .message-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 1px 0 7px;
+      color: #748078;
+      font-family: "DM Mono", monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+    }
+
+    .mode-tag {
+      padding: 3px 6px;
+      border-radius: 3px;
+      color: var(--pine);
+      background: var(--pine-soft);
+    }
+
+    .message-text {
+      color: #34433a;
+      font-size: 13px;
+      line-height: 1.72;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .user .message-content { justify-self: end; }
+    .user .message-text {
+      width: fit-content;
+      max-width: min(100%, 620px);
+      padding: 11px 14px;
+      border-radius: 12px 12px 3px 12px;
+      color: white;
+      background: var(--pine);
+    }
+
+    .reply-section { margin-top: 13px; }
+    .reply-section h3 {
+      margin: 0 0 6px;
+      color: var(--pine);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .reply-list { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+    .reply-list li {
+      position: relative;
+      padding-left: 14px;
+      color: #435148;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .reply-list li::before {
+      position: absolute;
+      top: 0.53em;
+      left: 0;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--rust);
+      content: "";
+    }
+
+    .status-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 5px 8px;
+      border-radius: 4px;
+      color: #53635a;
+      background: #e9eee8;
+      font-family: "DM Mono", monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+    }
+
+    .status-line.complete { color: #285d43; background: #e0f0df; }
+    .status-line.in_progress { color: #79522d; background: #f7eddc; }
+    .status-line.needs_info { color: #854b37; background: var(--rust-soft); }
+
+    .typing {
+      display: inline-flex;
+      gap: 4px;
+      padding: 12px 13px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: white;
+    }
+
+    .typing i {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #7b8a80;
+      animation: pulse 1s infinite ease-in-out;
+    }
+
+    .typing i:nth-child(2) { animation-delay: 120ms; }
+    .typing i:nth-child(3) { animation-delay: 240ms; }
+
+    .error-banner {
+      display: none;
+      margin: 12px 0 0 50px;
+      padding: 10px 12px;
+      border: 1px solid #e9c7b9;
+      border-radius: 5px;
+      color: #793c2a;
+      background: #fff7f3;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .error-banner.visible { display: block; }
+
+    .composer-area {
+      position: sticky;
+      bottom: 0;
+      padding: 15px clamp(17px, 5vw, 66px) 18px;
+      background: linear-gradient(180deg, rgba(251,252,249,0), rgba(251,252,249,0.96) 18%);
+    }
+
+    .composer {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      width: min(100%, 820px);
+      margin: 0 auto;
+      padding: 9px 9px 9px 15px;
+      border: 1px solid #cbd7cd;
+      border-radius: 8px;
+      background: var(--white);
+      box-shadow: var(--shadow);
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+
+    .composer:focus-within {
+      border-color: #648775;
+      box-shadow: 0 0 0 3px rgba(21,63,52,0.08), var(--shadow);
+    }
+
+    .composer textarea {
+      width: 100%;
+      min-height: 39px;
+      max-height: 150px;
+      resize: none;
+      padding: 10px 0;
+      border: 0;
+      outline: 0;
+      color: var(--ink);
+      background: transparent;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .composer textarea::placeholder { color: #8b968f; }
+
+    .send-button {
+      display: flex;
+      min-width: 76px;
+      height: 39px;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 0;
+      border-radius: 5px;
+      color: var(--pine);
+      background: var(--lime);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 150ms ease, transform 150ms ease;
+    }
+
+    .send-button:hover { transform: translateY(-1px); background: #cbea60; }
+    .send-button:disabled { opacity: 0.55; cursor: wait; transform: none; }
+    .send-button span { font-size: 16px; line-height: 1; }
+
+    .composer-note {
+      width: min(100%, 820px);
+      margin: 8px auto 0;
+      color: #89948d;
+      font-family: "DM Mono", monospace;
+      font-size: 9px;
+      text-align: center;
+    }
+
+    .mobile-brand { display: none; }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(7px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 60%, 100% { opacity: 0.35; transform: translateY(0); }
+      30% { opacity: 1; transform: translateY(-3px); }
+    }
+
+    @media (max-width: 820px) {
+      .layout { grid-template-columns: 210px minmax(0, 1fr); }
+      .rail { padding-right: 15px; padding-left: 15px; }
+      .topbar { min-height: 66px; }
+      .starter-grid { grid-template-columns: 1fr; }
+      .starter { min-height: 0; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 10px; }
+      .starter-title { grid-column: 1; }
+      .starter-copy { grid-column: 1; margin-top: 1px; }
+      .starter-arrow { grid-column: 2; grid-row: 1 / span 2; margin: 0 4px; }
+      .rail-photo { height: 120px; }
+    }
+
+    @media (max-width: 620px) {
+      .layout { display: block; }
+      .rail { display: none; }
+      .workspace { min-height: 100dvh; }
+      .topbar { min-height: 62px; padding: 10px 16px; }
+      .mobile-brand { display: flex; align-items: center; gap: 8px; }
+      .mobile-brand .brand-mark { width: 31px; height: 31px; border-radius: 10px 10px 10px 3px; font-size: 18px; }
+      .mobile-brand .brand-name { font-size: 13px; }
+      .topbar-left .crumb { display: none; }
+      .topbar-left .page-name { margin: 0; font-size: 12px; }
+      .topbar { gap: 7px; }
+      .top-actions { gap: 0; }
+      .endpoint-form input { width: min(49vw, 190px); }
+      .save-endpoint { padding: 8px; }
+      .thread-wrap { padding: 25px 17px 18px; }
+      .session-kicker { margin-left: 0; margin-bottom: 20px; }
+      .welcome { grid-template-columns: 32px minmax(0, 1fr); gap: 9px; }
+      .coach-mark { width: 31px; height: 31px; border-radius: 10px 10px 10px 3px; }
+      .welcome-title { font-size: 29px; }
+      .welcome-copy { font-size: 13px; }
+      .starter-grid { gap: 7px; }
+      .starter { padding: 10px 11px; }
+      .composer-area { padding: 11px 12px max(13px, env(safe-area-inset-bottom)); }
+      .composer { gap: 6px; padding-left: 11px; }
+      .send-button { min-width: 66px; }
+      .composer-note { font-size: 8px; }
+      .error-banner { margin-left: 0; }
+    }
+
+    @media (max-width: 380px) {
+      .topbar-left .page-name,
+      .mobile-brand .brand-name { display: none; }
+      .endpoint-form { gap: 5px; }
+      .endpoint-form input { width: clamp(96px, 38vw, 145px); }
+      .save-endpoint { padding-right: 7px; padding-left: 7px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="rail" aria-label="Career coach navigation">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">C</div>
+        <div>
+          <div class="brand-name">Career Coach</div>
+          <div class="brand-caption">Make your next move</div>
+        </div>
+      </div>
+
+      <button class="new-chat" id="newConversation" type="button">
+        <span>New conversation</span><span aria-hidden="true">+</span>
+      </button>
+
+      <p class="rail-label">Work on</p>
+      <nav class="service-list">
+        <button class="service-link" type="button" data-starter="mock_interview">
+          <span class="service-index">01</span>
+          <span><strong>Mock interview</strong><small>Practice one question at a time</small></span>
+        </button>
+        <button class="service-link" type="button" data-starter="cv_review">
+          <span class="service-index">02</span>
+          <span><strong>CV review</strong><small>Make your experience clearer</small></span>
+        </button>
+        <button class="service-link" type="button" data-starter="career_advice">
+          <span class="service-index">03</span>
+          <span><strong>Career advice</strong><small>Find a practical next step</small></span>
+        </button>
+      </nav>
+
+      <div class="rail-photo">
+        <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&amp;fit=crop&amp;w=640&amp;q=82" alt="Colleagues collaborating around a table" loading="lazy">
+        <div class="photo-caption">Good work starts with a conversation</div>
+      </div>
+      <div class="rail-foot"><span>CAREER STUDIO</span><span>01 / 03</span></div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="mobile-brand">
+            <div class="brand-mark" aria-hidden="true">C</div>
+            <div class="brand-name">Career Coach</div>
+          </div>
+          <div class="crumb">Career studio / Session</div>
+          <div class="page-name">Conversation</div>
+        </div>
+        <div class="top-actions">
+          <form id="endpointForm" class="endpoint-form">
+            <label class="sr-only" for="apiUrl">Backend API URL</label>
+            <input id="apiUrl" type="url" placeholder="http://localhost:8000" autocomplete="url" spellcheck="false">
+            <button class="save-endpoint" type="submit">Save</button>
+          </form>
+        </div>
+      </header>
+
+      <section class="thread-wrap" aria-label="Conversation">
+        <p class="session-kicker">A space for your next step</p>
+        <div id="welcome" class="welcome">
+          <div class="coach-mark" aria-hidden="true">C</div>
+          <div class="welcome-body">
+            <h1 class="welcome-title">Let's get you moving.</h1>
+            <p class="welcome-copy">I'm your career coach. We can sharpen your interview skills, make your CV work harder, or untangle a career decision. Where would you like to begin?</p>
+            <p class="starter-label">Choose a starting point</p>
+            <div class="starter-grid">
+              <button class="starter" type="button" data-starter="mock_interview">
+                <span class="starter-title">Mock interview</span>
+                <span class="starter-copy">Practice for the role you want.</span>
+                <span class="starter-arrow" aria-hidden="true">&rarr;</span>
+              </button>
+              <button class="starter" type="button" data-starter="cv_review">
+                <span class="starter-title">CV review</span>
+                <span class="starter-copy">Get clear, role-specific feedback.</span>
+                <span class="starter-arrow" aria-hidden="true">&rarr;</span>
+              </button>
+              <button class="starter" type="button" data-starter="career_advice">
+                <span class="starter-title">Career advice</span>
+                <span class="starter-copy">Work through a decision or goal.</span>
+                <span class="starter-arrow" aria-hidden="true">&rarr;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="messages" class="messages" aria-live="polite" aria-relevant="additions"></div>
+        <div id="errorBanner" class="error-banner" role="alert"></div>
+      </section>
+
+      <footer class="composer-area">
+        <form id="chatForm" class="composer">
+          <label class="sr-only" for="messageInput">Your message</label>
+          <textarea id="messageInput" rows="1" placeholder="Tell me what you are working toward..." required></textarea>
+          <button id="sendButton" class="send-button" type="submit"><span>Send</span><span aria-hidden="true">&rarr;</span></button>
+        </form>
+        <p class="composer-note">Enter to send &middot; Shift + Enter for a new line</p>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const API_KEY = "careerCoachApiUrl";
+      const DEFAULT_API_URL = "http://localhost:8000";
+      const apiUrlInput = document.querySelector("#apiUrl");
+      const endpointForm = document.querySelector("#endpointForm");
+      const chatForm = document.querySelector("#chatForm");
+      const messageInput = document.querySelector("#messageInput");
+      const sendButton = document.querySelector("#sendButton");
+      const messagesEl = document.querySelector("#messages");
+      const welcomeEl = document.querySelector("#welcome");
+      const errorBanner = document.querySelector("#errorBanner");
+      let previousResponseId = null;
+      let activeMode = null;
+      let busy = false;
+
+      apiUrlInput.value = localStorage.getItem(API_KEY) || DEFAULT_API_URL;
+
+      function normalizedApiUrl() {
+        return apiUrlInput.value.trim().replace(/\/+$/, "");
+      }
+
+      function showError(message) {
+        errorBanner.textContent = message;
+        errorBanner.classList.add("visible");
+      }
+
+      function clearError() {
+        errorBanner.textContent = "";
+        errorBanner.classList.remove("visible");
+      }
+
+      function scrollToLatest() {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+      }
+
+      function appendText(parent, text, className) {
+        const element = document.createElement("p");
+        element.className = className || "message-text";
+        element.textContent = text;
+        parent.append(element);
+        return element;
+      }
+
+      function appendList(parent, title, values) {
+        if (!Array.isArray(values) || values.length === 0) return;
+        const section = document.createElement("section");
+        section.className = "reply-section";
+        const heading = document.createElement("h3");
+        heading.textContent = title;
+        const list = document.createElement("ul");
+        list.className = "reply-list";
+        for (const value of values) {
+          const item = document.createElement("li");
+          item.textContent = value;
+          list.append(item);
+        }
+        section.append(heading, list);
+        parent.append(section);
+      }
+
+      function renderAssistantReply(reply, mode) {
+        const article = document.createElement("article");
+        article.className = "message assistant";
+        const avatar = document.createElement("div");
+        avatar.className = "message-avatar";
+        avatar.setAttribute("aria-hidden", "true");
+        avatar.textContent = "C";
+
+        const content = document.createElement("div");
+        content.className = "message-content";
+        const meta = document.createElement("div");
+        meta.className = "message-meta";
+        const name = document.createElement("span");
+        name.textContent = "Career Coach";
+        meta.append(name);
+        if (mode) {
+          const tag = document.createElement("span");
+          tag.className = "mode-tag";
+          tag.textContent = mode.replaceAll("_", " ");
+          meta.append(tag);
+        }
+        content.append(meta);
+
+        if (reply && typeof reply.message === "string") appendText(content, reply.message);
+        if (reply && typeof reply.summary === "string") appendText(content, reply.summary);
+        if (reply && typeof reply.next_question === "string") appendText(content, reply.next_question);
+        if (reply && typeof reply.feedback === "string") appendList(content, "Interview feedback", [reply.feedback]);
+        if (reply && Array.isArray(reply.strengths)) appendList(content, "Strengths", reply.strengths);
+        if (reply && Array.isArray(reply.improvements)) appendList(content, "Suggested improvements", reply.improvements);
+        if (reply && Array.isArray(reply.action_steps)) appendList(content, "Next steps", reply.action_steps);
+
+        if (reply && typeof reply.status === "string") {
+          const status = document.createElement("span");
+          status.className = "status-line " + reply.status;
+          status.textContent = reply.status.replaceAll("_", " ");
+          content.append(status);
+        }
+
+        article.append(avatar, content);
+        messagesEl.append(article);
+      }
+
+      function renderUserMessage(text) {
+        const article = document.createElement("article");
+        article.className = "message user";
+        const content = document.createElement("div");
+        content.className = "message-content";
+        appendText(content, text);
+        article.append(content);
+        messagesEl.append(article);
+      }
+
+      function showTyping() {
+        const article = document.createElement("article");
+        article.className = "message assistant";
+        article.id = "typingIndicator";
+        const avatar = document.createElement("div");
+        avatar.className = "message-avatar";
+        avatar.textContent = "C";
+        avatar.setAttribute("aria-hidden", "true");
+        const content = document.createElement("div");
+        content.className = "message-content";
+        const meta = document.createElement("div");
+        meta.className = "message-meta";
+        meta.textContent = "Career Coach is thinking";
+        const dots = document.createElement("div");
+        dots.className = "typing";
+        dots.setAttribute("aria-label", "Thinking");
+        for (let i = 0; i < 3; i += 1) dots.append(document.createElement("i"));
+        content.append(meta, dots);
+        article.append(avatar, content);
+        messagesEl.append(article);
+      }
+
+      endpointForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const value = normalizedApiUrl();
+        if (!value) return;
+        apiUrlInput.value = value;
+        localStorage.setItem(API_KEY, value);
+      });
+
+      document.querySelectorAll("[data-starter]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const selectedMode = button.dataset.starter;
+          const starters = {
+            mock_interview: "I would like to do a mock interview.",
+            cv_review: "I would like a CV review.",
+            career_advice: "I would like career advice.",
+          };
+          sendMessage(starters[selectedMode]);
+        });
+      });
+
+      document.querySelector("#newConversation").addEventListener("click", () => {
+        previousResponseId = null;
+        activeMode = null;
+        messagesEl.replaceChildren();
+        welcomeEl.hidden = false;
+        clearError();
+        messageInput.focus();
+      });
+
+      chatForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        sendMessage(messageInput.value);
+      });
+
+      messageInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          chatForm.requestSubmit();
+        }
+      });
+
+      messageInput.addEventListener("input", () => {
+        messageInput.style.height = "auto";
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 150) + "px";
+      });
+
+      async function sendMessage(rawText) {
+        const text = rawText.trim();
+        if (!text || busy) return;
+        clearError();
+        welcomeEl.hidden = true;
+        renderUserMessage(text);
+        messageInput.value = "";
+        messageInput.style.height = "auto";
+        busy = true;
+        sendButton.disabled = true;
+        messageInput.disabled = true;
+        showTyping();
+        scrollToLatest();
+
+        const body = { message: text };
+        if (previousResponseId) body.previous_response_id = previousResponseId;
+
+        try {
+          const response = await fetch(normalizedApiUrl() + "/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            const detail = typeof data.detail === "string" ? data.detail : "The coach could not respond.";
+            throw new Error(detail);
+          }
+          previousResponseId = data.response_id || previousResponseId;
+          activeMode = data.mode || activeMode;
+          document.querySelector("#typingIndicator")?.remove();
+          renderAssistantReply(data.reply, activeMode);
+        } catch (error) {
+          document.querySelector("#typingIndicator")?.remove();
+          showError(error.message || "Unable to reach the career coach. Check the backend URL and try again.");
+        } finally {
+          busy = false;
+          sendButton.disabled = false;
+          messageInput.disabled = false;
+          messageInput.focus();
+          scrollToLatest();
+        }
+      }
+
+    })();
+  </script>
+</body>
+</html>
