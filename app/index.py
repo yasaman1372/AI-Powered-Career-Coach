@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from openai import OpenAIError
@@ -16,6 +16,7 @@ from app.career_coach import (
     ModeSelection,
     MockInterviewReply,
 )
+from app.cv_documents import CVDocumentError, extract_cv_text
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ app.add_middleware(
 )
 
 coach = CareerCoach()
+MAX_CV_FILE_BYTES = 5 * 1024 * 1024
 
 class ChatRequest(BaseModel):
     """A message sent to the career coach."""
@@ -91,6 +93,52 @@ def chat(request: ChatRequest) -> ChatResponse:
         ) from error
     except Exception as error:
         logger.exception("Unexpected error while handling chat request")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="The server encountered an unexpected error. Check the Render logs.",
+        ) from error
+
+
+@app.post(
+    "/chat/cv-review",
+    response_model=ChatResponse,
+    response_model_exclude_none=True,
+)
+async def chat_with_cv(
+    message: str = Form(default=""),
+    previous_response_id: str | None = Form(default=None),
+    file: UploadFile = File(...),
+) -> ChatResponse:
+    """Review an uploaded PDF or DOCX CV without storing it on disk."""
+
+    message = message.strip()
+    content = await file.read(MAX_CV_FILE_BYTES + 1)
+    await file.close()
+    if len(content) > MAX_CV_FILE_BYTES:
+        raise HTTPException(status_code=413, detail="CV files must be 5 MB or smaller.")
+
+    try:
+        cv_text = extract_cv_text(file.filename or "", content)
+    except CVDocumentError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    try:
+        return ChatResponse(
+            **coach.review_cv(
+                message,
+                cv_text,
+                file.filename or "uploaded CV",
+                previous_response_id,
+            )
+        )
+    except OpenAIError as error:
+        logger.exception("OpenAI CV review request failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The AI provider could not process the CV review.",
+        ) from error
+    except Exception as error:
+        logger.exception("Unexpected error while handling CV review request")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="The server encountered an unexpected error. Check the Render logs.",

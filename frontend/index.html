@@ -533,6 +533,43 @@
       text-align: center;
     }
 
+    .cv-attachment {
+      display: flex;
+      width: min(100%, 820px);
+      align-items: center;
+      gap: 10px;
+      margin: 0 auto 8px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .cv-attachment[hidden] { display: none; }
+
+    .attach-cv-button {
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      color: var(--pine);
+      background: white;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .attach-cv-button:hover { border-color: #8ea99a; }
+    .cv-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .remove-cv-button {
+      padding: 3px 7px;
+      border: 0;
+      color: var(--muted);
+      background: transparent;
+      font-size: 17px;
+      cursor: pointer;
+    }
+
+    .attachment-note { color: var(--muted); font-size: 10px; }
+
     .mobile-brand { display: none; }
 
     @keyframes rise {
@@ -675,9 +712,15 @@
       </section>
 
       <footer class="composer-area">
+        <div id="cvAttachment" class="cv-attachment" hidden>
+          <label class="attach-cv-button" for="cvFileInput">Attach CV (PDF or DOCX)</label>
+          <input id="cvFileInput" class="sr-only" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-label="Attach a PDF or DOCX CV">
+          <span id="cvFileName" class="cv-file-name" hidden></span>
+          <button id="removeCvFile" class="remove-cv-button" type="button" aria-label="Remove attached CV" hidden>&times;</button>
+        </div>
         <form id="chatForm" class="composer">
           <label class="sr-only" for="messageInput">Your message</label>
-          <textarea id="messageInput" rows="1" placeholder="Tell me what you are working toward..." required></textarea>
+          <textarea id="messageInput" rows="1" placeholder="Tell me what you are working toward..."></textarea>
           <button id="sendButton" class="send-button" type="submit"><span>Send</span><span aria-hidden="true">&rarr;</span></button>
         </form>
         <p class="composer-note">Enter to send &middot; Shift + Enter for a new line</p>
@@ -701,6 +744,10 @@
       const chatForm = document.querySelector("#chatForm");
       const messageInput = document.querySelector("#messageInput");
       const sendButton = document.querySelector("#sendButton");
+      const cvAttachment = document.querySelector("#cvAttachment");
+      const cvFileInput = document.querySelector("#cvFileInput");
+      const cvFileName = document.querySelector("#cvFileName");
+      const removeCvFileButton = document.querySelector("#removeCvFile");
       const messagesEl = document.querySelector("#messages");
       const welcomeEl = document.querySelector("#welcome");
       const errorBanner = document.querySelector("#errorBanner");
@@ -793,15 +840,38 @@
         messagesEl.append(article);
       }
 
-      function renderUserMessage(text) {
+      function renderUserMessage(text, filename) {
         const article = document.createElement("article");
         article.className = "message user";
         const content = document.createElement("div");
         content.className = "message-content";
         appendText(content, text);
+        if (filename) appendText(content, `Attached CV: ${filename}`, "attachment-note");
         article.append(content);
         messagesEl.append(article);
       }
+
+      function updateAttachmentVisibility() {
+        const canAttach = activeMode === "cv_review";
+        cvAttachment.hidden = !canAttach;
+        if (!canAttach) clearAttachedCV();
+      }
+
+      function clearAttachedCV() {
+        cvFileInput.value = "";
+        cvFileName.textContent = "";
+        cvFileName.hidden = true;
+        removeCvFileButton.hidden = true;
+      }
+
+      cvFileInput.addEventListener("change", () => {
+        const file = cvFileInput.files[0];
+        cvFileName.textContent = file ? file.name : "";
+        cvFileName.hidden = !file;
+        removeCvFileButton.hidden = !file;
+      });
+
+      removeCvFileButton.addEventListener("click", clearAttachedCV);
 
       function showTyping() {
         const article = document.createElement("article");
@@ -833,6 +903,8 @@
             cv_review: "I would like a CV review.",
             career_advice: "I would like career advice.",
           };
+          activeMode = selectedMode;
+          updateAttachmentVisibility();
           sendMessage(starters[selectedMode]);
         });
       });
@@ -840,6 +912,7 @@
       document.querySelector("#newConversation").addEventListener("click", () => {
         previousResponseId = null;
         activeMode = null;
+        updateAttachmentVisibility();
         messagesEl.replaceChildren();
         welcomeEl.hidden = false;
         clearError();
@@ -864,28 +937,42 @@
       });
 
       async function sendMessage(rawText) {
-        const text = rawText.trim();
+        const attachedFile = activeMode === "cv_review" ? cvFileInput.files[0] : null;
+        const text = rawText.trim() || (attachedFile ? "Please review my CV." : "");
         if (!text || busy) return;
         clearError();
         welcomeEl.hidden = true;
-        renderUserMessage(text);
+        renderUserMessage(text, attachedFile?.name);
         messageInput.value = "";
         messageInput.style.height = "auto";
         busy = true;
         sendButton.disabled = true;
         messageInput.disabled = true;
+        cvFileInput.disabled = true;
         showTyping();
         scrollToLatest();
 
-        const body = { message: text };
-        if (previousResponseId) body.previous_response_id = previousResponseId;
-
-        try {
-          const response = await fetch(normalizedApiUrl() + "/chat", {
+        let requestUrl = normalizedApiUrl() + "/chat";
+        let requestOptions;
+        if (attachedFile) {
+          const formData = new FormData();
+          formData.set("message", text);
+          formData.set("file", attachedFile);
+          if (previousResponseId) formData.set("previous_response_id", previousResponseId);
+          requestUrl = normalizedApiUrl() + "/chat/cv-review";
+          requestOptions = { method: "POST", body: formData };
+        } else {
+          const body = { message: text };
+          if (previousResponseId) body.previous_response_id = previousResponseId;
+          requestOptions = {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
-          });
+          };
+        }
+
+        try {
+          const response = await fetch(requestUrl, requestOptions);
           const responseText = await response.text();
           let data = {};
           try {
@@ -901,6 +988,8 @@
           }
           previousResponseId = data.response_id || previousResponseId;
           activeMode = data.mode || activeMode;
+          updateAttachmentVisibility();
+          if (attachedFile) clearAttachedCV();
           document.querySelector("#typingIndicator")?.remove();
           renderAssistantReply(data.reply, activeMode);
         } catch (error) {
@@ -913,6 +1002,7 @@
           busy = false;
           sendButton.disabled = false;
           messageInput.disabled = false;
+          cvFileInput.disabled = false;
           messageInput.focus();
           scrollToLatest();
         }
