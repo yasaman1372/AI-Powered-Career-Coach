@@ -232,41 +232,6 @@
 
     .page-name { margin-top: 4px; font-size: 14px; font-weight: 700; }
 
-    .top-actions { display: flex; align-items: center; gap: 13px; }
-
-    .endpoint-form {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
-
-    .endpoint-form input {
-      width: min(220px, 25vw);
-      padding: 8px 9px;
-      border: 1px solid var(--line);
-      border-radius: 5px;
-      outline: none;
-      color: var(--ink);
-      background: white;
-      font-family: "DM Mono", monospace;
-      font-size: 10px;
-    }
-
-    .endpoint-form input:focus { border-color: var(--pine); box-shadow: 0 0 0 3px rgba(21,63,52,0.1); }
-
-    .save-endpoint {
-      padding: 8px 10px;
-      border: 0;
-      border-radius: 5px;
-      color: white;
-      background: var(--pine);
-      font-size: 10px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .save-endpoint:hover { background: #245b49; }
-
     .thread-wrap {
       width: min(100%, 950px);
       flex: 1;
@@ -603,9 +568,6 @@
       .topbar-left .crumb { display: none; }
       .topbar-left .page-name { margin: 0; font-size: 12px; }
       .topbar { gap: 7px; }
-      .top-actions { gap: 0; }
-      .endpoint-form input { width: min(49vw, 190px); }
-      .save-endpoint { padding: 8px; }
       .thread-wrap { padding: 25px 17px 18px; }
       .session-kicker { margin-left: 0; margin-bottom: 20px; }
       .welcome { grid-template-columns: 32px minmax(0, 1fr); gap: 9px; }
@@ -624,9 +586,6 @@
     @media (max-width: 380px) {
       .topbar-left .page-name,
       .mobile-brand .brand-name { display: none; }
-      .endpoint-form { gap: 5px; }
-      .endpoint-form input { width: clamp(96px, 38vw, 145px); }
-      .save-endpoint { padding-right: 7px; padding-left: 7px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -682,13 +641,6 @@
           <div class="crumb">Career studio / Session</div>
           <div class="page-name">Conversation</div>
         </div>
-        <div class="top-actions">
-          <form id="endpointForm" class="endpoint-form">
-            <label class="sr-only" for="apiUrl">Backend API URL</label>
-            <input id="apiUrl" type="url" placeholder="Backend API URL" autocomplete="url" spellcheck="false">
-            <button class="save-endpoint" type="submit">Save</button>
-          </form>
-        </div>
       </header>
 
       <section class="thread-wrap" aria-label="Conversation">
@@ -735,13 +687,10 @@
 
   <script>
     (() => {
-      const API_KEY = "careerCoachApiUrl";
       const IS_LOCAL = ["localhost", "127.0.0.1"].includes(window.location.hostname);
       const DEFAULT_API_URL = IS_LOCAL
         ? "http://localhost:8000"
         : "https://ai-powered-career-coach.onrender.com";
-      const apiUrlInput = document.querySelector("#apiUrl");
-      const endpointForm = document.querySelector("#endpointForm");
       const chatForm = document.querySelector("#chatForm");
       const messageInput = document.querySelector("#messageInput");
       const sendButton = document.querySelector("#sendButton");
@@ -752,15 +701,8 @@
       let activeMode = null;
       let busy = false;
 
-      const savedApiUrl = localStorage.getItem(API_KEY);
-      const savedApiIsLocal = savedApiUrl && /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(savedApiUrl);
-      const openedRemotely = window.location.hostname && !["localhost", "127.0.0.1"].includes(window.location.hostname);
-      apiUrlInput.value = openedRemotely && savedApiIsLocal
-        ? DEFAULT_API_URL
-        : (savedApiUrl || DEFAULT_API_URL);
-
       function normalizedApiUrl() {
-        return apiUrlInput.value.trim().replace(/\/+$/, "");
+        return DEFAULT_API_URL;
       }
 
       function showError(message) {
@@ -875,14 +817,6 @@
         article.append(avatar, content);
         messagesEl.append(article);
       }
-
-      endpointForm.addEventListener("submit", (event) => {
-        event.preventDefault();
-        const value = normalizedApiUrl();
-        if (!value) return;
-        apiUrlInput.value = value;
-        localStorage.setItem(API_KEY, value);
-      });
 
       document.querySelectorAll("[data-starter]").forEach((button) => {
         button.addEventListener("click", () => {
