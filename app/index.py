@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -15,6 +16,8 @@ from app.career_coach import (
     ModeSelection,
     MockInterviewReply,
 )
+
+logger = logging.getLogger(__name__)
 
 
 load_dotenv()
@@ -81,7 +84,14 @@ def chat(request: ChatRequest) -> ChatResponse:
             **coach.get_response(message, request.previous_response_id)
         )
     except OpenAIError as error:
+        logger.exception("OpenAI request failed")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="The AI provider could not process the request.",
+        ) from error
+    except Exception as error:
+        logger.exception("Unexpected error while handling chat request")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="The server encountered an unexpected error. Check the Render logs.",
         ) from error

@@ -944,9 +944,17 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
           });
-          const data = await response.json().catch(() => ({}));
+          const responseText = await response.text();
+          let data = {};
+          try {
+            data = responseText ? JSON.parse(responseText) : {};
+          } catch {
+            data = {};
+          }
           if (!response.ok) {
-            const detail = typeof data.detail === "string" ? data.detail : "The coach could not respond.";
+            const detail = typeof data.detail === "string"
+              ? data.detail
+              : `The coach API returned HTTP ${response.status}. Check that Render deployed the latest app and review its logs.`;
             throw new Error(detail);
           }
           previousResponseId = data.response_id || previousResponseId;
