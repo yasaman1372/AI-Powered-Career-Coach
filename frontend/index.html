@@ -687,10 +687,17 @@
 
   <script>
     (() => {
+      const API_KEY = "careerCoachApiUrl";
       const IS_LOCAL = ["localhost", "127.0.0.1"].includes(window.location.hostname);
       const DEFAULT_API_URL = IS_LOCAL
         ? "http://localhost:8000"
         : "https://ai-powered-career-coach.onrender.com";
+      const savedApiUrl = localStorage.getItem(API_KEY);
+      const savedApiIsLocal = savedApiUrl && /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(savedApiUrl);
+      const openedRemotely = window.location.hostname && !IS_LOCAL;
+      const apiUrl = openedRemotely && savedApiIsLocal
+        ? DEFAULT_API_URL
+        : (savedApiUrl || DEFAULT_API_URL);
       const chatForm = document.querySelector("#chatForm");
       const messageInput = document.querySelector("#messageInput");
       const sendButton = document.querySelector("#sendButton");
@@ -702,7 +709,7 @@
       let busy = false;
 
       function normalizedApiUrl() {
-        return DEFAULT_API_URL;
+        return apiUrl.trim().replace(/\/+$/, "");
       }
 
       function showError(message) {
@@ -900,7 +907,7 @@
           document.querySelector("#typingIndicator")?.remove();
           const isNetworkError = error instanceof TypeError;
           showError(isNetworkError
-            ? "Unable to reach the coach API. Check that this app is deployed with the backend, or set the Backend API URL above to your Render web service URL and save it."
+            ? "Unable to reach the coach API. Check your connection and make sure the backend is running."
             : (error.message || "The coach could not respond. Check the backend URL and try again."));
         } finally {
           busy = false;
