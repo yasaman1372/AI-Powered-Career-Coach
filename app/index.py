@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from openai import OpenAIError
 from pydantic import BaseModel, Field
 from typing import Literal
@@ -17,8 +20,8 @@ from app.career_coach import (
 load_dotenv()
 
 app = FastAPI(
-    title="AI Travel Advisor API",
-    description="Create personalized travel plans with an AI advisor.",
+    title="AI Career Coach API",
+    description="Get interview practice, CV feedback, and career advice.",
     version="1.0.0",
 )
 app.add_middleware(
@@ -44,14 +47,11 @@ class ChatResponse(BaseModel):
 
 
 @app.get("/", include_in_schema=False)
-def home() -> dict[str, str]:
-    """Point API visitors to the service documentation and health check."""
+def home() -> FileResponse:
+    """Serve the chat interface from the same host as the API."""
 
-    return {
-        "service": "AI Career Coach API",
-        "docs": "/docs",
-        "health": "/health",
-    }
+    frontend_path = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
+    return FileResponse(frontend_path)
 
 
 @app.get("/health")

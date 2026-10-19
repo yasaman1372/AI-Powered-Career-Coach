@@ -685,7 +685,7 @@
         <div class="top-actions">
           <form id="endpointForm" class="endpoint-form">
             <label class="sr-only" for="apiUrl">Backend API URL</label>
-            <input id="apiUrl" type="url" placeholder="http://localhost:8000" autocomplete="url" spellcheck="false">
+            <input id="apiUrl" type="url" placeholder="Backend API URL" autocomplete="url" spellcheck="false">
             <button class="save-endpoint" type="submit">Save</button>
           </form>
         </div>
@@ -736,7 +736,9 @@
   <script>
     (() => {
       const API_KEY = "careerCoachApiUrl";
-      const DEFAULT_API_URL = "http://localhost:8000";
+      const DEFAULT_API_URL = window.location.protocol === "http:" || window.location.protocol === "https:"
+        ? window.location.origin
+        : "http://localhost:8000";
       const apiUrlInput = document.querySelector("#apiUrl");
       const endpointForm = document.querySelector("#endpointForm");
       const chatForm = document.querySelector("#chatForm");
@@ -749,7 +751,12 @@
       let activeMode = null;
       let busy = false;
 
-      apiUrlInput.value = localStorage.getItem(API_KEY) || DEFAULT_API_URL;
+      const savedApiUrl = localStorage.getItem(API_KEY);
+      const savedApiIsLocal = savedApiUrl && /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(savedApiUrl);
+      const openedRemotely = window.location.hostname && !["localhost", "127.0.0.1"].includes(window.location.hostname);
+      apiUrlInput.value = openedRemotely && savedApiIsLocal
+        ? DEFAULT_API_URL
+        : (savedApiUrl || DEFAULT_API_URL);
 
       function normalizedApiUrl() {
         return apiUrlInput.value.trim().replace(/\/+$/, "");
@@ -948,7 +955,10 @@
           renderAssistantReply(data.reply, activeMode);
         } catch (error) {
           document.querySelector("#typingIndicator")?.remove();
-          showError(error.message || "Unable to reach the career coach. Check the backend URL and try again.");
+          const isNetworkError = error instanceof TypeError;
+          showError(isNetworkError
+            ? "Unable to reach the coach API. Check that this app is deployed with the backend, or set the Backend API URL above to your Render web service URL and save it."
+            : (error.message || "The coach could not respond. Check the backend URL and try again."));
         } finally {
           busy = false;
           sendButton.disabled = false;
