@@ -736,9 +736,10 @@
   <script>
     (() => {
       const API_KEY = "careerCoachApiUrl";
-      const DEFAULT_API_URL = window.location.protocol === "http:" || window.location.protocol === "https:"
-        ? window.location.origin
-        : "http://localhost:8000";
+      const IS_LOCAL = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+      const DEFAULT_API_URL = IS_LOCAL
+        ? "http://localhost:8000"
+        : "https://ai-powered-career-coach.onrender.com";
       const apiUrlInput = document.querySelector("#apiUrl");
       const endpointForm = document.querySelector("#endpointForm");
       const chatForm = document.querySelector("#chatForm");
