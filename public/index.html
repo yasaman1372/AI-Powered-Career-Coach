@@ -1050,8 +1050,8 @@
         } else {
           const body = { message: outgoingText };
           if (previousResponseId) body.previous_response_id = previousResponseId;
-          requestOptions = {
-            method: "POST",
+          if (activeMode && previousResponseId) body.mode = activeMode;
+          requestOptions = {            method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
           };

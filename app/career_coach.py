@@ -261,8 +261,29 @@ class CareerCoach:
         self,
         user_message: str,
         previous_response_id: str | None = None,
+        mode: str | None = None,
     ) -> dict[str, object]:
         user_message = attach_job_ad(user_message)
+        mode_models = {
+            "mock_interview": MockInterviewReply,
+            "cv_review": CVReviewReply,
+            "career_advice": CareerAdviceReply,
+        }
+
+        # Once a service is chosen, skip mode selection so short answers
+        # such as "Junior" are not mistaken for an unclear service choice.
+        if mode in mode_models and previous_response_id:
+            response = self._request(
+                user_message, mode_models[mode], previous_response_id
+            )
+            if response.output_parsed is None:
+                raise ValueError("The model did not return a parsed reply")
+            return {
+                "response_id": response.id,
+                "mode": mode,
+                "reply": ensure_buttons(response.output_parsed),
+            }
+
         selection_response = self._request(
             user_message, ModeSelection, previous_response_id
         )
@@ -277,11 +298,6 @@ class CareerCoach:
                 "reply": ensure_buttons(selection),
             }
 
-        mode_models = {
-            "mock_interview": MockInterviewReply,
-            "cv_review": CVReviewReply,
-            "career_advice": CareerAdviceReply,
-        }
         reply_response = self._request(
             f"Continue the conversation in {selection.mode} mode. Respond to the user's latest message.",
             mode_models[selection.mode],

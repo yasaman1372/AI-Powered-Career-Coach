@@ -43,6 +43,7 @@ class ChatRequest(BaseModel):
 
     message: str = Field(min_length=1)
     previous_response_id: str | None = None
+    mode: Literal["mock_interview", "cv_review", "career_advice"] | None = None
 
 
 class ChatResponse(BaseModel):
@@ -83,7 +84,7 @@ def chat(request: ChatRequest) -> ChatResponse:
 
     try:
         return ChatResponse(
-            **coach.get_response(message, request.previous_response_id)
+            **coach.get_response(message, request.previous_response_id, request.mode)
         )
     except OpenAIError as error:
         logger.exception("OpenAI request failed")
