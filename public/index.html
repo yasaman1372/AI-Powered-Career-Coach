@@ -920,7 +920,7 @@
           const actions = document.createElement("div");
           actions.className = "interview-actions";
           const items = [
-            ["Evaluate my answer", "Evaluate my answer", ""],
+            ["Evaluate my answer", "evaluate", ""],
             ["Next question", "Next question", ""],
             ["End interview", "End the interview", "end-button"],
           ];
@@ -931,6 +931,16 @@
             button.textContent = label;
             button.addEventListener("click", () => {
               if (busy) return;
+              if (message === "evaluate") {
+                const answer = messageInput.value.trim();
+                if (!answer) {
+                  showError("Type your answer in the message box first, then click Evaluate my answer.");
+                  messageInput.focus();
+                  return;
+                }
+                sendMessage(`My answer: ${answer}\n\nEvaluate my answer.`);
+                return;
+              }
               sendMessage(message);
             });
             actions.append(button);
