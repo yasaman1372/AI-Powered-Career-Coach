@@ -983,7 +983,7 @@
           if (!response.ok) {
             const detail = typeof data.detail === "string"
               ? data.detail
-              : `The coach API returned HTTP ${response.status}. Check that Render deployed the latest app and review its logs.`;
+              : `The coach API returned HTTP ${response.status}. Check that Vercel deployed the latest app and review its function logs.`;
             throw new Error(detail);
           }
           previousResponseId = data.response_id || previousResponseId;
