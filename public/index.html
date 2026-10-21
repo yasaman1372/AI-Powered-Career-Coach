@@ -423,6 +423,8 @@
     }
     .option-button:hover:not(:disabled) { border-color: var(--rust); color: var(--rust); }
     .option-button:disabled { opacity: 0.55; cursor: default; }
+    .interview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .interview-actions .end-button { margin-left: auto; color: #854b37; border-color: #e3c4b7; }
     .status-line {
       display: inline-flex;
       align-items: center;
@@ -913,6 +915,29 @@
         if (reply && Array.isArray(reply.strengths)) appendList(content, "Strengths", reply.strengths);
         if (reply && Array.isArray(reply.improvements)) appendList(content, "Suggested improvements", reply.improvements);
         if (reply && Array.isArray(reply.action_steps)) appendList(content, "Next steps", reply.action_steps);
+
+        if (reply && reply.status === "in_progress" && mode === "mock_interview") {
+          const actions = document.createElement("div");
+          actions.className = "interview-actions";
+          const items = [
+            ["Evaluate my answer", "Evaluate my answer", ""],
+            ["Next question", "Next question", ""],
+            ["End interview", "End the interview", "end-button"],
+          ];
+          for (const [label, message, extraClass] of items) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = `option-button ${extraClass}`.trim();
+            button.textContent = label;
+            button.addEventListener("click", () => {
+              if (busy) return;
+              sendMessage(message);
+            });
+            actions.append(button);
+          }
+          document.querySelectorAll(".interview-actions button").forEach((item) => { item.disabled = true; });
+          content.append(actions);
+        }
 
         if (reply && typeof reply.status === "string") {
           const status = document.createElement("span");
