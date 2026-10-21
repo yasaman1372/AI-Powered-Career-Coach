@@ -423,6 +423,21 @@
     }
     .option-button:hover:not(:disabled) { border-color: var(--rust); color: var(--rust); }
     .option-button:disabled { opacity: 0.55; cursor: default; }
+    .job-cards { display: grid; gap: 8px; margin-top: 14px; }
+    .job-card {
+      display: block;
+      padding: 11px 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .job-card:hover { border-color: #8ea99a; }
+    .job-card-title { font-size: 13px; font-weight: 700; }
+    .job-card-meta { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .job-card-source { margin-top: 5px; color: var(--rust); font-size: 10px; font-weight: 600; }
+
     .composer-actions {
       display: flex;
       flex: 0 0 100%;
@@ -698,7 +713,7 @@
         </button>
         <button class="service-link" type="button" data-starter="career_advice">
           <span class="service-index">03</span>
-          <span><strong>Career advice</strong><small>Find a practical next step</small></span>
+          <span><strong>Career advice</strong><small>Next steps and job offers</small></span>
         </button>
       </nav>
 
@@ -742,7 +757,7 @@
               </button>
               <button class="starter" type="button" data-starter="career_advice">
                 <span class="starter-title">Career advice</span>
-                <span class="starter-copy">Work through a decision or goal.</span>
+                <span class="starter-copy">Work through a goal and find job offers.</span>
                 <span class="starter-arrow" aria-hidden="true">&rarr;</span>
               </button>
             </div>
@@ -869,7 +884,35 @@
         });
       });
 
-      function renderAssistantReply(reply, mode) {
+      function appendJobCards(parent, jobs) {
+        if (!Array.isArray(jobs) || jobs.length === 0) return;
+        const list = document.createElement("div");
+        list.className = "job-cards";
+        for (const job of jobs) {
+          if (!/^https?:\/\//i.test(job.url || "")) continue;
+          const card = document.createElement("a");
+          card.className = "job-card";
+          card.href = job.url;
+          card.target = "_blank";
+          card.rel = "noopener noreferrer";
+          const title = document.createElement("div");
+          title.className = "job-card-title";
+          title.textContent = job.title;
+          const meta = document.createElement("div");
+          meta.className = "job-card-meta";
+          meta.textContent = [job.company, job.location, job.job_type, job.salary, job.posted]
+            .filter(Boolean)
+            .join(" · ");
+          const source = document.createElement("div");
+          source.className = "job-card-source";
+          source.textContent = `View on ${job.source} →`;
+          card.append(title, meta, source);
+          list.append(card);
+        }
+        if (list.children.length > 0) parent.append(list);
+      }
+
+      function renderAssistantReply(reply, mode, jobs) {
         const article = document.createElement("article");
         article.className = "message assistant";
         const avatar = document.createElement("div");
@@ -955,6 +998,8 @@
         if (reply && Array.isArray(reply.strengths)) appendList(content, "Strengths", reply.strengths);
         if (reply && Array.isArray(reply.improvements)) appendList(content, "Suggested improvements", reply.improvements);
         if (reply && Array.isArray(reply.action_steps)) appendList(content, "Next steps", reply.action_steps);
+
+        appendJobCards(content, jobs);
 
         if (reply && reply.status === "complete" && mode === "mock_interview") {
           const group = document.createElement("div");
@@ -1193,7 +1238,7 @@
           updateAttachmentVisibility();
           if (attachedFile) clearAttachedCV();
           document.querySelector("#typingIndicator")?.remove();
-          renderAssistantReply(data.reply, activeMode);
+          renderAssistantReply(data.reply, activeMode, data.jobs);
           updateInterviewActions(data.reply, activeMode);
         } catch (error) {
           document.querySelector("#typingIndicator")?.remove();

@@ -17,6 +17,7 @@ from app.career_coach import (
     MockInterviewReply,
 )
 from app.cv_documents import CVDocumentError, extract_cv_text
+from app.job_search import JobOffer
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ class ChatResponse(BaseModel):
     response_id: str
     mode: Literal["mock_interview", "cv_review", "career_advice"] | None = None
     reply: ModeSelection | MockInterviewReply | CVReviewReply | CareerAdviceReply
+    jobs: list[JobOffer] | None = None
 
 
 @app.get("/", include_in_schema=False)
