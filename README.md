@@ -8,7 +8,7 @@ An AI career coach for mock interviews, CV feedback, career advice, personalized
 - **CV review:** upload a PDF or DOCX to receive strengths and improvement suggestions.
 - **Career advice:** get practical, personalized guidance.
 - **Personalized learning roadmap:** create a step-by-step learning plan based on a target role or skill, existing experience, weekly study time, and target timeframe.
-- **Job search:** search job listings from Remotive, Arbeitnow, Jobicy, Remote OK, and The Muse. Results show as linked cards with source, location, type, salary when available, and posting date.
+- **Job search:** search job listings from Remotive, Arbeitnow, Jobicy, Remote OK, and The Muse. Choose a role, location, and posting-time filter. Results show as linked cards with source, location, type, salary when available, and posting date.
 - **CV job-match score:** optionally upload a CV from a job card to get an evidence-based match score, listed qualifications, gaps, and suggestions for that role.
 - **CV tailoring:** select **Tailor my CV for this job** on a job card, upload a PDF or DOCX, and receive a draft tailored to the listing. The coach is instructed not to invent experience or qualifications.
 - **CV export:** download tailored drafts as a formatted PDF or editable DOCX.
@@ -51,10 +51,11 @@ The main routes are:
 - `GET /health` — health check
 - `POST /chat` — chat and job search
 - `POST /chat/cv-review` — PDF or DOCX CV review and tailoring
+- `POST /chat/job-match-score` — compare an uploaded PDF or DOCX CV with a selected listing
 - `POST /cv/pdf` — render a tailored CV as PDF
 - `POST /cv/docx` — render a tailored CV as editable DOCX
 
-CV uploads are limited to 5 MB.
+CV uploads are limited to 5 MB. The match score is an AI-generated estimate based on the information visible in the uploaded CV and job listing; it is not a hiring prediction.
 
 ## Deploy
 
