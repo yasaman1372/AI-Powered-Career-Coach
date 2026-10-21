@@ -892,7 +892,41 @@
         const content = document.createElement("pre");
         content.className = "tailored-cv";
         content.textContent = text;
-        section.append(heading, content);
+        const actions = document.createElement("div");
+        actions.className = "option-buttons";
+        const formats = [
+          ["Download as Word (editable)", "docx", "tailored-cv.docx"],
+          ["Download as PDF", "pdf", "tailored-cv.pdf"],
+        ];
+        for (const [label, format, filename] of formats) {
+          const download = document.createElement("button");
+          download.type = "button";
+          download.className = "option-button";
+          download.textContent = label;
+          download.addEventListener("click", async () => {
+            download.disabled = true;
+            try {
+              const response = await fetch(normalizedApiUrl() + "/cv/" + format, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text }),
+              });
+              if (!response.ok) throw new Error(`File creation failed (HTTP ${response.status}).`);
+              const url = URL.createObjectURL(await response.blob());
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = filename;
+              link.click();
+              URL.revokeObjectURL(url);
+            } catch (error) {
+              showError(error.message || "File creation failed.");
+            } finally {
+              download.disabled = false;
+            }
+          });
+          actions.append(download);
+        }
+        section.append(heading, content, actions);
         parent.append(section);
       }
 

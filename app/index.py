@@ -4,7 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from openai import OpenAIError
 from pydantic import BaseModel, Field, ValidationError
 from typing import Literal
@@ -17,6 +17,8 @@ from app.career_coach import (
     MockInterviewReply,
 )
 from app.cv_documents import CVDocumentError, extract_cv_text
+from app.cv_docx import build_cv_docx
+from app.cv_pdf import build_cv_pdf
 from app.job_search import JobOffer, search_jobs
 
 logger = logging.getLogger(__name__)
@@ -67,6 +69,32 @@ def health() -> dict[str, str]:
     """Report that the HTTP service is running."""
 
     return {"status": "ok"}
+
+
+class CVPdfRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=20000)
+
+
+@app.post("/cv/pdf", include_in_schema=False)
+def cv_pdf(request: CVPdfRequest) -> Response:
+    """Turn a tailored CV draft into a formatted PDF download."""
+
+    return Response(
+        content=build_cv_pdf(request.text),
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="tailored-cv.pdf"'},
+    )
+
+
+@app.post("/cv/docx", include_in_schema=False)
+def cv_docx(request: CVPdfRequest) -> Response:
+    """Turn a tailored CV draft into an editable Word document."""
+
+    return Response(
+        content=build_cv_docx(request.text),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": 'attachment; filename="tailored-cv.docx"'},
+    )
 
 
 @app.get("/jobs", response_model=list[JobOffer], response_model_exclude_none=True)
