@@ -76,6 +76,9 @@ class CareerAdviceReply(BaseModel):
 MAX_JOB_AD_CHARS = 8000
 MIN_JOB_AD_CHARS = 200
 URL_PATTERN = re.compile(r"https?://[^\s<>\"']+")
+JOB_LINK_QUESTION = re.compile(
+    r"\b(do you have|have you got|is there)\b[^.?!]*\b(link|url)\b", re.IGNORECASE
+)
 LOGIN_WALL = re.compile(r"(linkedin )?(log ?in|sign in|sign up|join now)\b", re.IGNORECASE)
 MAX_JOB_AD_BYTES = 1024 * 1024
 MAX_REDIRECTS = 3
@@ -163,6 +166,18 @@ def run_tool(name: str, arguments: str) -> str:
             return FETCH_ERROR
         return fetch_job_ad(str(url))
     return f"ERROR: unknown tool {name}"
+
+
+def ensure_job_link_buttons(reply):
+    """Add Yes/No buttons when the coach asks whether the user has a job ad link."""
+
+    if not isinstance(reply, MockInterviewReply):
+        return reply
+    text = f"{reply.message} {reply.next_question or ''}"
+    if JOB_LINK_QUESTION.search(text) or reply.ask_job_link:
+        reply.options = ["Yes", "No"]
+        reply.ask_job_link = True
+    return reply
 
 
 TOOLS = [
@@ -268,7 +283,7 @@ class CareerCoach:
         return {
             "response_id": reply_response.id,
             "mode": selection.mode,
-            "reply": reply_response.output_parsed,
+            "reply": ensure_job_link_buttons(reply_response.output_parsed),
         }
 
     def review_cv(
