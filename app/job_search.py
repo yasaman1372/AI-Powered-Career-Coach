@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from itertools import zip_longest
 
 import requests
+from bs4 import BeautifulSoup
 from pydantic import BaseModel
 
 REMOTIVE_URL = "https://remotive.com/api/remote-jobs"
@@ -23,6 +24,12 @@ class JobOffer(BaseModel):
     job_type: str | None = None
     salary: str | None = None
     posted: str | None = None
+    description: str | None = None
+
+
+def _description_text(value: str, limit: int = 4000) -> str | None:
+    text = BeautifulSoup(value, "html.parser").get_text(" ", strip=True)
+    return text[:limit] or None
 
 
 def _terms(query: str) -> list[str]:
@@ -88,6 +95,7 @@ def _search_remotive(query: str, location: str) -> list[JobOffer]:
                     job_type=(job.get("job_type") or "").replace("_", " ") or None,
                     salary=job.get("salary") or None,
                     posted=(job.get("publication_date") or "")[:10] or None,
+                    description=_description_text(job.get("description") or ""),
                 ),
             )
         )
@@ -126,6 +134,7 @@ def _search_arbeitnow(query: str, location: str) -> list[JobOffer]:
                     source="Arbeitnow",
                     job_type=", ".join(job.get("job_types") or []) or None,
                     posted=posted,
+                    description=_description_text(job.get("description") or ""),
                 ),
             )
         )

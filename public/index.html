@@ -437,6 +437,18 @@
     .job-card-title { font-size: 13px; font-weight: 700; }
     .job-card-meta { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.5; }
     .job-card-source { margin-top: 5px; color: var(--rust); font-size: 10px; font-weight: 600; }
+    .job-card-actions { margin-top: 9px; }
+    .tailored-cv {
+      max-height: 600px;
+      overflow: auto;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      font: 12px/1.6 "DM Sans", sans-serif;
+      white-space: pre-wrap;
+    }
 
     .composer-actions {
       display: flex;
@@ -778,7 +790,7 @@
 
       <footer class="composer-area">
         <div id="cvAttachment" class="cv-attachment" hidden>
-          <label class="attach-cv-button" for="cvFileInput">Attach CV (PDF or DOCX)</label>
+          <label id="cvUploadHint" class="attach-cv-button" for="cvFileInput">Attach CV (PDF or DOCX)</label>
           <input id="cvFileInput" class="sr-only" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-label="Attach a PDF or DOCX CV">
           <span id="cvFileName" class="cv-file-name" hidden></span>
           <button id="removeCvFile" class="remove-cv-button" type="button" aria-label="Remove attached CV" hidden>&times;</button>
@@ -818,12 +830,14 @@
       const cvFileInput = document.querySelector("#cvFileInput");
       const cvFileName = document.querySelector("#cvFileName");
       const removeCvFileButton = document.querySelector("#removeCvFile");
+      const cvUploadHint = document.querySelector("#cvUploadHint");
       const messagesEl = document.querySelector("#messages");
       const welcomeEl = document.querySelector("#welcome");
       const errorBanner = document.querySelector("#errorBanner");
       const interviewActions = document.querySelector("#interviewActions");
       let previousResponseId = null;
       let activeMode = null;
+      let pendingTargetJob = null;
       let busy = false;
 
       function normalizedApiUrl() {
@@ -869,6 +883,19 @@
         parent.append(section);
       }
 
+      function appendPreformatted(parent, title, text) {
+        if (typeof text !== "string" || !text.trim()) return;
+        const section = document.createElement("section");
+        section.className = "reply-section";
+        const heading = document.createElement("h3");
+        heading.textContent = title;
+        const content = document.createElement("pre");
+        content.className = "tailored-cv";
+        content.textContent = text;
+        section.append(heading, content);
+        parent.append(section);
+      }
+
       function updateInterviewActions(reply, mode) {
         interviewActions.hidden = !(mode === "mock_interview" && reply && reply.status === "in_progress");
       }
@@ -899,11 +926,8 @@
         list.className = "job-cards";
         for (const job of jobs) {
           if (!/^https?:\/\//i.test(job.url || "")) continue;
-          const card = document.createElement("a");
+          const card = document.createElement("div");
           card.className = "job-card";
-          card.href = job.url;
-          card.target = "_blank";
-          card.rel = "noopener noreferrer";
           const title = document.createElement("div");
           title.className = "job-card-title";
           title.textContent = job.title;
@@ -912,10 +936,31 @@
           meta.textContent = [job.company, job.location, job.job_type, job.salary, job.posted]
             .filter(Boolean)
             .join(" · ");
-          const source = document.createElement("div");
-          source.className = "job-card-source";
-          source.textContent = `View on ${job.source} →`;
-          card.append(title, meta, source);
+          const jobLink = document.createElement("a");
+          jobLink.href = job.url;
+          jobLink.target = "_blank";
+          jobLink.rel = "noopener noreferrer";
+          jobLink.className = "job-card-source";
+          jobLink.textContent = `View on ${job.source} →`;
+          const actions = document.createElement("div");
+          actions.className = "job-card-actions";
+          const tailorButton = document.createElement("button");
+          tailorButton.type = "button";
+          tailorButton.className = "option-button";
+          tailorButton.textContent = "Tailor my CV for this job";
+          tailorButton.addEventListener("click", () => {
+            pendingTargetJob = job;
+            previousResponseId = null;
+            activeMode = "cv_review";
+            clearAttachedCV();
+            updateAttachmentVisibility();
+            cvUploadHint.textContent = `Attach CV for ${job.title} at ${job.company}`;
+            messageInput.value = `Please tailor my CV for the ${job.title} role at ${job.company}.`;
+            showError("Choose your CV file, then send it to generate a tailored draft.");
+            cvFileInput.click();
+          });
+          actions.append(tailorButton);
+          card.append(title, meta, jobLink, actions);
           list.append(card);
         }
         if (list.children.length > 0) parent.append(list);
@@ -946,6 +991,9 @@
 
         if (reply && typeof reply.message === "string") appendText(content, reply.message);
         if (reply && typeof reply.summary === "string") appendText(content, reply.summary);
+        if (reply && typeof reply.tailored_cv === "string") {
+          appendPreformatted(content, "Tailored CV draft", reply.tailored_cv);
+        }
         if (reply && typeof reply.next_question === "string") appendText(content, reply.next_question);
         if (reply && Array.isArray(reply.options) && reply.options.length > 0) {
           const group = document.createElement("div");
@@ -1057,7 +1105,11 @@
       function updateAttachmentVisibility() {
         const canAttach = activeMode === "cv_review";
         cvAttachment.hidden = !canAttach;
-        if (!canAttach) clearAttachedCV();
+        if (!canAttach) {
+          clearAttachedCV();
+          pendingTargetJob = null;
+          cvUploadHint.textContent = "Attach CV (PDF or DOCX)";
+        }
       }
 
       function clearAttachedCV() {
@@ -1196,6 +1248,11 @@
         const attachedFile = activeMode === "cv_review" ? cvFileInput.files[0] : null;
         const text = rawText.trim() || (attachedFile ? "Please review my CV." : "");
         if (!text || busy) return;
+        if (pendingTargetJob && !attachedFile) {
+          showError("Attach your CV before sending a tailoring request.");
+          cvFileInput.click();
+          return;
+        }
         clearError();
         welcomeEl.hidden = true;
         renderUserMessage(text, attachedFile?.name);
@@ -1216,6 +1273,7 @@
           const formData = new FormData();
           formData.set("message", outgoingText);
           formData.set("file", attachedFile);
+          if (pendingTargetJob) formData.set("target_job", JSON.stringify(pendingTargetJob));
           if (previousResponseId) formData.set("previous_response_id", previousResponseId);
           requestUrl = normalizedApiUrl() + "/chat/cv-review";
           requestOptions = { method: "POST", body: formData };
@@ -1247,7 +1305,11 @@
           previousResponseId = data.response_id || previousResponseId;
           activeMode = data.mode || activeMode;
           updateAttachmentVisibility();
-          if (attachedFile) clearAttachedCV();
+          if (attachedFile) {
+            clearAttachedCV();
+            pendingTargetJob = null;
+            cvUploadHint.textContent = "Attach CV (PDF or DOCX)";
+          }
           document.querySelector("#typingIndicator")?.remove();
           renderAssistantReply(data.reply, activeMode, data.jobs);
           updateInterviewActions(data.reply, activeMode);

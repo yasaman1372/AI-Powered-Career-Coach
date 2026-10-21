@@ -6,7 +6,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from openai import OpenAIError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from typing import Literal
 
 from app.career_coach import (
@@ -110,6 +110,7 @@ def chat(request: ChatRequest) -> ChatResponse:
 async def chat_with_cv(
     message: str = Form(default=""),
     previous_response_id: str | None = Form(default=None),
+    target_job: str | None = Form(default=None),
     file: UploadFile = File(...),
 ) -> ChatResponse:
     """Review an uploaded PDF or DOCX CV without storing it on disk."""
@@ -126,12 +127,18 @@ async def chat_with_cv(
         raise HTTPException(status_code=400, detail=str(error)) from error
 
     try:
+        job = JobOffer.model_validate_json(target_job) if target_job else None
+    except ValidationError as error:
+        raise HTTPException(status_code=422, detail="The selected job listing is invalid.") from error
+
+    try:
         return ChatResponse(
             **coach.review_cv(
                 message,
                 cv_text,
                 file.filename or "uploaded CV",
                 previous_response_id,
+                job,
             )
         )
     except OpenAIError as error:
