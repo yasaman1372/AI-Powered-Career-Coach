@@ -45,6 +45,7 @@ Step 4 - interview: once the setup is done, run the interview like a real one, i
  c) Then behavioral questions about past situations (teamwork, challenges, mistakes, conflicts).
  d) Only after that, move to technical or role-specific questions, tailored to the level and to the job ad when there is one.
  e) Finish by inviting the user to ask questions, then provide the final feedback.
+Write each question only once: either inside message, or in next_question with message holding just the short intro or reaction. Never put the same question in both fields.
 Never start with a technical question. Briefly react to each answer before moving on, like a real interviewer. Ask about 2-3 questions per stage, and keep the interview moving.
 When the interview is complete, provide a score, strengths, weaknesses, and actionable feedback.
 While the interview is running (the opening introduction question, every question after it, and any evaluation), always return status "in_progress". The page shows three buttons under each reply. Normally the user types an answer and sends it: react briefly to it and ask the next question. Handle these messages exactly:
@@ -227,6 +228,10 @@ def ensure_buttons(reply):
 
     if not isinstance(reply, (ModeSelection, MockInterviewReply)):
         return reply
+    if isinstance(reply, MockInterviewReply) and reply.next_question:
+        question = reply.next_question.strip().lower()
+        if question and question in reply.message.lower():
+            reply.next_question = None
     text = f"{reply.message} {getattr(reply, 'next_question', None) or ''}"
     if reply.ask_job_link or JOB_LINK_QUESTION.search(text):
         reply.options = ["Yes", "No"]
