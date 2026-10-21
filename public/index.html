@@ -409,6 +409,20 @@
       content: "";
     }
 
+    .option-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+    .option-button {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      cursor: pointer;
+    }
+    .option-button:hover:not(:disabled) { border-color: var(--rust); color: var(--rust); }
+    .option-button:disabled { opacity: 0.55; cursor: default; }
     .status-line {
       display: inline-flex;
       align-items: center;
@@ -824,6 +838,23 @@
         if (reply && typeof reply.message === "string") appendText(content, reply.message);
         if (reply && typeof reply.summary === "string") appendText(content, reply.summary);
         if (reply && typeof reply.next_question === "string") appendText(content, reply.next_question);
+        if (reply && Array.isArray(reply.options) && reply.options.length > 0) {
+          const group = document.createElement("div");
+          group.className = "option-buttons";
+          for (const option of reply.options) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "option-button";
+            button.textContent = option;
+            button.addEventListener("click", () => {
+              if (busy) return;
+              group.querySelectorAll("button").forEach((item) => { item.disabled = true; });
+              sendMessage(option);
+            });
+            group.append(button);
+          }
+          content.append(group);
+        }
         if (reply && typeof reply.feedback === "string") appendList(content, "Interview feedback", [reply.feedback]);
         if (reply && Array.isArray(reply.strengths)) appendList(content, "Strengths", reply.strengths);
         if (reply && Array.isArray(reply.improvements)) appendList(content, "Suggested improvements", reply.improvements);
