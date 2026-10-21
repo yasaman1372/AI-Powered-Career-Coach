@@ -49,6 +49,8 @@ class ModeSelection(BaseModel):
     status: Literal["needs_mode", "selected"]
     mode: Literal["mock_interview", "cv_review", "career_advice"] | None = None
     message: str
+    options: list[str] | None = None
+    ask_job_link: bool | None = None
 
 
 class MockInterviewReply(BaseModel):
@@ -76,6 +78,9 @@ class CareerAdviceReply(BaseModel):
 MAX_JOB_AD_CHARS = 8000
 MIN_JOB_AD_CHARS = 200
 URL_PATTERN = re.compile(r"https?://[^\s<>\"']+")
+LEVEL_QUESTION = re.compile(
+    r"\b(what|which)\b[^.?!]*\b(experience )?level\b[^.?!]*\?", re.IGNORECASE
+)
 JOB_LINK_QUESTION = re.compile(
     r"\b(do you have|have you got|is there)\b[^.?!]*\b(link|url)\b", re.IGNORECASE
 )
@@ -168,15 +173,17 @@ def run_tool(name: str, arguments: str) -> str:
     return f"ERROR: unknown tool {name}"
 
 
-def ensure_job_link_buttons(reply):
-    """Add Yes/No buttons when the coach asks whether the user has a job ad link."""
+def ensure_buttons(reply):
+    """Add option buttons when the coach asks the level or job ad link question."""
 
-    if not isinstance(reply, MockInterviewReply):
+    if not isinstance(reply, (ModeSelection, MockInterviewReply)):
         return reply
-    text = f"{reply.message} {reply.next_question or ''}"
-    if JOB_LINK_QUESTION.search(text) or reply.ask_job_link:
+    text = f"{reply.message} {getattr(reply, 'next_question', None) or ''}"
+    if reply.ask_job_link or JOB_LINK_QUESTION.search(text):
         reply.options = ["Yes", "No"]
         reply.ask_job_link = True
+    elif not reply.options and LEVEL_QUESTION.search(text):
+        reply.options = ["Junior", "Mid-level", "Senior"]
     return reply
 
 
@@ -267,7 +274,7 @@ class CareerCoach:
             return {
                 "response_id": selection_response.id,
                 "mode": None,
-                "reply": selection,
+                "reply": ensure_buttons(selection),
             }
 
         mode_models = {
@@ -283,7 +290,7 @@ class CareerCoach:
         return {
             "response_id": reply_response.id,
             "mode": selection.mode,
-            "reply": ensure_job_link_buttons(reply_response.output_parsed),
+            "reply": ensure_buttons(reply_response.output_parsed),
         }
 
     def review_cv(
