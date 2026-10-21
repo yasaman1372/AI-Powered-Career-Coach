@@ -6,3 +6,4 @@ pypdf
 python-dotenv
 requests
 uvicorn
+beautifulsoup4

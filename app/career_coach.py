@@ -1,12 +1,16 @@
+import ipaddress
 import json
 import os
+import socket
 
 import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from typing import Literal
+from urllib.parse import urljoin, urlparse
 
 import requests
+from bs4 import BeautifulSoup
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
@@ -17,7 +21,13 @@ SYSTEM_PROMPT = """
 You are a professional AI career coach. Help users prepare for interviews, improve their CVs, and make career decisions.
 
 On the first turn, introduce yourself briefly and ask which service the user wants:
-1. Mock interview : if the user chooses this, first ask about their experience level, and also ask whether they want company-specific interview preparation (if so, ask which company and role) or general interview preparation
+1. Mock interview : if the user chooses this, first ask about their experience level, and also ask whether they want company-specific interview 
+preparation (if so, ask which company and role) or general interview preparation
+For company-specific preparation, ask the user for the company and role, and invite them to share a link to 
+the job advertisement. If they send a link, use the fetch_job_ad tool to open and read it, 
+and base the interview questions on the requirements in the ad. If the tool fails or returns little useful 
+content, tell them: "I couldn't open that link. Could you paste the job description text here instead?"
+Never invent or guess the contents of a job ad you haven't read.
 2. CV review
 3. Career advice
 Do not start a service until the user chooses one. Return status "needs_mode" with mode null, and put the introduction and question in message.
@@ -60,7 +70,99 @@ class CareerAdviceReply(BaseModel):
     action_steps: list[str]
 
 
-TOOLS = []
+MAX_JOB_AD_CHARS = 8000
+MAX_JOB_AD_BYTES = 1024 * 1024
+MAX_REDIRECTS = 3
+MAX_TOOL_ROUNDS = 3
+FETCH_ERROR = "ERROR: could not open the link"
+
+
+def _is_public_url(url: str) -> bool:
+    """Allow only http(s) URLs whose host resolves exclusively to public IPs."""
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return False
+    try:
+        addresses = socket.getaddrinfo(parsed.hostname, parsed.port or None)
+    except (socket.gaierror, UnicodeError):
+        return False
+    return bool(addresses) and all(
+        ipaddress.ip_address(address[4][0]).is_global for address in addresses
+    )
+
+
+def fetch_job_ad(url: str) -> str:
+    """Download a job advertisement page and return its visible text."""
+
+    try:
+        for _ in range(MAX_REDIRECTS + 1):
+            if not _is_public_url(url):
+                return FETCH_ERROR
+            with requests.get(
+                url,
+                timeout=10,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; CareerCoachBot/1.0)"},
+                allow_redirects=False,
+                stream=True,
+            ) as response:
+                if response.is_redirect:
+                    location = response.headers.get("Location")
+                    if not location:
+                        return FETCH_ERROR
+                    url = urljoin(url, location)
+                    continue
+                response.raise_for_status()
+                content = response.raw.read(MAX_JOB_AD_BYTES, decode_content=True)
+                encoding = response.encoding or "utf-8"
+                break
+        else:
+            return FETCH_ERROR
+
+        soup = BeautifulSoup(content.decode(encoding, errors="replace"), "html.parser")
+        for tag in soup(["script", "style"]):
+            tag.decompose()
+        text = re.sub(r"\s+", " ", soup.get_text(separator=" ")).strip()
+    except Exception:
+        return FETCH_ERROR
+
+    return text[:MAX_JOB_AD_CHARS] if text else FETCH_ERROR
+
+
+def run_tool(name: str, arguments: str) -> str:
+    """Execute a model-requested tool call and return its output as text."""
+
+    if name == "fetch_job_ad":
+        try:
+            url = json.loads(arguments).get("url", "")
+        except (json.JSONDecodeError, AttributeError):
+            return FETCH_ERROR
+        return fetch_job_ad(str(url))
+    return f"ERROR: unknown tool {name}"
+
+
+TOOLS = [
+    {
+        "type": "function",
+        "name": "fetch_job_ad",
+        "description": (
+            "Open a job advertisement URL and return its text content. "
+            "Use it when the user shares a link to a job posting."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The full http(s) URL of the job advertisement.",
+                }
+            },
+            "required": ["url"],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    }
+]
 
 
 class CareerCoach:
@@ -89,7 +191,25 @@ class CareerCoach:
         }
         if previous_response_id:
             request["previous_response_id"] = previous_response_id
-        return self.client.responses.parse(**request)
+        response = self.client.responses.parse(**request)
+
+        for _ in range(MAX_TOOL_ROUNDS):
+            tool_calls = [
+                item for item in response.output if item.type == "function_call"
+            ]
+            if not tool_calls:
+                break
+            request["input"] = [
+                {
+                    "type": "function_call_output",
+                    "call_id": call.call_id,
+                    "output": run_tool(call.name, call.arguments),
+                }
+                for call in tool_calls
+            ]
+            request["previous_response_id"] = response.id
+            response = self.client.responses.parse(**request)
+        return response
 
     def get_response(
         self,
