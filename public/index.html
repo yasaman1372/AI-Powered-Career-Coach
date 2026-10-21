@@ -584,31 +584,20 @@
 
     .attachment-note { color: var(--muted); font-size: 10px; }
 
-    .job-link-attachment {
-      display: flex;
-      width: min(100%, 820px);
-      align-items: center;
-      gap: 10px;
-      margin: 0 auto 8px;
-      color: var(--muted);
-      font-size: 11px;
-    }
-
-    .job-link-attachment[hidden] { display: none; }
-
-    .job-link-attachment input {
+    .job-link-form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .job-link-form[hidden] { display: none; }
+    .job-link-form input {
       flex: 1;
-      min-width: 0;
-      padding: 7px 10px;
+      min-width: 200px;
+      padding: 8px 10px;
       border: 1px solid var(--line);
       border-radius: 5px;
       color: var(--ink);
       background: white;
       font: inherit;
-      font-size: 12px;
+      font-size: 13px;
     }
-
-    .job-link-attachment input:focus { outline: none; border-color: #8ea99a; }
+    .job-link-form input:focus { outline: none; border-color: #8ea99a; }
 
     .mobile-brand { display: none; }
 
@@ -758,10 +747,6 @@
           <span id="cvFileName" class="cv-file-name" hidden></span>
           <button id="removeCvFile" class="remove-cv-button" type="button" aria-label="Remove attached CV" hidden>&times;</button>
         </div>
-        <div id="jobLinkAttachment" class="job-link-attachment" hidden>
-          <label for="jobLinkInput">Job ad link (optional)</label>
-          <input id="jobLinkInput" type="url" placeholder="https://company.com/jobs/..." autocomplete="off">
-        </div>
         <form id="chatForm" class="composer">
           <label class="sr-only" for="messageInput">Your message</label>
           <textarea id="messageInput" rows="1" placeholder="Tell me what you are working toward..."></textarea>
@@ -792,8 +777,6 @@
       const cvFileInput = document.querySelector("#cvFileInput");
       const cvFileName = document.querySelector("#cvFileName");
       const removeCvFileButton = document.querySelector("#removeCvFile");
-      const jobLinkAttachment = document.querySelector("#jobLinkAttachment");
-      const jobLinkInput = document.querySelector("#jobLinkInput");
       const messagesEl = document.querySelector("#messages");
       const welcomeEl = document.querySelector("#welcome");
       const errorBanner = document.querySelector("#errorBanner");
@@ -873,6 +856,37 @@
         if (reply && Array.isArray(reply.options) && reply.options.length > 0) {
           const group = document.createElement("div");
           group.className = "option-buttons";
+          const linkForm = document.createElement("div");
+          linkForm.className = "job-link-form";
+          linkForm.hidden = true;
+          const linkInput = document.createElement("input");
+          linkInput.type = "url";
+          linkInput.placeholder = "https://company.com/jobs/...";
+          linkInput.setAttribute("aria-label", "Job advertisement link");
+          const linkSubmit = document.createElement("button");
+          linkSubmit.type = "button";
+          linkSubmit.className = "option-button";
+          linkSubmit.textContent = "Send link";
+          const submitLink = () => {
+            if (busy) return;
+            const link = linkInput.value.trim();
+            if (!/^https?:\/\/\S+$/i.test(link)) {
+              showError("Please enter a valid job ad link starting with http:// or https://");
+              return;
+            }
+            group.querySelectorAll("button").forEach((item) => { item.disabled = true; });
+            linkForm.querySelectorAll("input, button").forEach((item) => { item.disabled = true; });
+            sendMessage(`Job advertisement link: ${link}`);
+          };
+          linkSubmit.addEventListener("click", submitLink);
+          linkInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              submitLink();
+            }
+          });
+          linkForm.append(linkInput, linkSubmit);
+
           for (const option of reply.options) {
             const button = document.createElement("button");
             button.type = "button";
@@ -880,12 +894,20 @@
             button.textContent = option;
             button.addEventListener("click", () => {
               if (busy) return;
+              if (reply.ask_job_link && option.toLowerCase() === "yes") {
+                clearError();
+                linkForm.hidden = false;
+                linkInput.focus();
+                return;
+              }
               group.querySelectorAll("button").forEach((item) => { item.disabled = true; });
+              linkForm.querySelectorAll("input, button").forEach((item) => { item.disabled = true; });
               sendMessage(option);
             });
             group.append(button);
           }
           content.append(group);
+          if (reply.ask_job_link) content.append(linkForm);
         }
         if (reply && typeof reply.feedback === "string") appendList(content, "Interview feedback", [reply.feedback]);
         if (reply && Array.isArray(reply.strengths)) appendList(content, "Strengths", reply.strengths);
@@ -918,8 +940,6 @@
         const canAttach = activeMode === "cv_review";
         cvAttachment.hidden = !canAttach;
         if (!canAttach) clearAttachedCV();
-        jobLinkAttachment.hidden = activeMode !== "mock_interview";
-        if (jobLinkAttachment.hidden) jobLinkInput.value = "";
       }
 
       function clearAttachedCV() {
@@ -1003,30 +1023,18 @@
 
       async function sendMessage(rawText) {
         const attachedFile = activeMode === "cv_review" ? cvFileInput.files[0] : null;
-        const pendingJobLink = activeMode === "mock_interview" ? jobLinkInput.value.trim() : "";
-        const text = rawText.trim() || (attachedFile ? "Please review my CV." : "") || (pendingJobLink ? "Here is the job advertisement." : "");
+        const text = rawText.trim() || (attachedFile ? "Please review my CV." : "");
         if (!text || busy) return;
         clearError();
         welcomeEl.hidden = true;
-        const jobLink = pendingJobLink;
-        if (jobLink && !/^https?:\/\/\S+$/i.test(jobLink)) {
-          showError("Please enter a valid job ad link starting with http:// or https://");
-          return;
-        }
         renderUserMessage(text, attachedFile?.name);
-        if (jobLink) {
-          const lastBubble = messagesEl.lastElementChild.querySelector(".message-content");
-          appendText(lastBubble, `Job ad link: ${jobLink}`, "attachment-note");
-        }
-        jobLinkInput.value = "";
-        const outgoingText = jobLink ? `${text}\n\nJob advertisement link: ${jobLink}` : text;
+        const outgoingText = text;
         messageInput.value = "";
         messageInput.style.height = "auto";
         busy = true;
         sendButton.disabled = true;
         messageInput.disabled = true;
         cvFileInput.disabled = true;
-        jobLinkInput.disabled = true;
         showTyping();
         scrollToLatest();
 
@@ -1081,7 +1089,6 @@
           sendButton.disabled = false;
           messageInput.disabled = false;
           cvFileInput.disabled = false;
-          jobLinkInput.disabled = false;
           messageInput.focus();
           scrollToLatest();
         }
