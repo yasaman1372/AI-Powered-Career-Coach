@@ -145,19 +145,31 @@ def fetch_job_ad(url: str) -> str:
     return text[:MAX_JOB_AD_CHARS]
 
 
-def attach_job_ad(message: str) -> str:
-    """Open a job ad link in the message and add the real outcome for the model."""
+LINK_NOT_OPENED_MESSAGE = (
+    "I couldn't open that link. Could you share some details about the job and the "
+    "company instead? For example, paste the job description, or tell me the role, "
+    "the company, and the main requirements."
+)
+
+
+def open_job_link(message: str) -> tuple[str, str | None]:
+    """Open a job ad link in the message.
+
+    Returns the message for the model and a failure notice when the link
+    could not be read, so the backend can answer without the model.
+    """
 
     match = URL_PATTERN.search(message)
     if not match:
-        return message
+        return message, None
     url = match.group(0).rstrip(".,;)")
     content = fetch_job_ad(url)
     if content.startswith("ERROR:"):
-        return f"{message}\n\n[Backend result: the link {url} could not be opened.]"
+        return message, LINK_NOT_OPENED_MESSAGE
     return (
         f"{message}\n\n[Backend result: the link {url} was opened. "
-        f"Job ad text follows.]\n<job_ad>\n{content}\n</job_ad>"
+        f"Job ad text follows.]\n<job_ad>\n{content}\n</job_ad>",
+        None,
     )
 
 
@@ -263,7 +275,13 @@ class CareerCoach:
         previous_response_id: str | None = None,
         mode: str | None = None,
     ) -> dict[str, object]:
-        user_message = attach_job_ad(user_message)
+        user_message, link_error = open_job_link(user_message)
+        if link_error:
+            return {
+                "response_id": previous_response_id or "",
+                "mode": "mock_interview",
+                "reply": MockInterviewReply(status="needs_info", message=link_error),
+            }
         mode_models = {
             "mock_interview": MockInterviewReply,
             "cv_review": CVReviewReply,
