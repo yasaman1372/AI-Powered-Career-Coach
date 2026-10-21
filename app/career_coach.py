@@ -84,7 +84,26 @@ LEVEL_QUESTION = re.compile(
 JOB_LINK_QUESTION = re.compile(
     r"\b(do you have|have you got|is there)\b[^.?!]*\b(link|url)\b", re.IGNORECASE
 )
-LOGIN_WALL = re.compile(r"(linkedin )?(log ?in|sign in|sign up|join now)\b", re.IGNORECASE)
+LOGIN_WALL = re.compile(
+    r"\b(log ?in|sign in|sign up|join now|accept cookies|cookie policy|enable javascript)\b",
+    re.IGNORECASE,
+)
+JOB_KEYWORDS = (
+    "responsibilit", "requirement", "qualification", "experience", "skills",
+    "apply", "salary", "benefits", "we offer", "you will", "about the role",
+    "about us", "job description", "position",
+)
+# These sites require a login to show job ads, so a server cannot read them.
+BLOCKED_JOB_HOSTS = ("linkedin.com", "lnkd.in")
+
+
+def looks_like_job_ad(text: str) -> bool:
+    """Reject login walls, cookie notices and generic listing pages."""
+
+    lowered = text.lower()
+    if LOGIN_WALL.search(lowered[:600]):
+        return False
+    return sum(keyword in lowered for keyword in JOB_KEYWORDS) >= 3
 MAX_JOB_AD_BYTES = 1024 * 1024
 MAX_REDIRECTS = 3
 MAX_TOOL_ROUNDS = 3
@@ -108,6 +127,10 @@ def _is_public_url(url: str) -> bool:
 
 def fetch_job_ad(url: str) -> str:
     """Download a job advertisement page and return its visible text."""
+
+    host = (urlparse(url).hostname or "").lower()
+    if any(host == blocked or host.endswith("." + blocked) for blocked in BLOCKED_JOB_HOSTS):
+        return FETCH_ERROR
 
     try:
         for _ in range(MAX_REDIRECTS + 1):
@@ -140,7 +163,7 @@ def fetch_job_ad(url: str) -> str:
     except Exception:
         return FETCH_ERROR
 
-    if len(text) < MIN_JOB_AD_CHARS or LOGIN_WALL.match(text):
+    if len(text) < MIN_JOB_AD_CHARS or not looks_like_job_ad(text):
         return FETCH_ERROR
     return text[:MAX_JOB_AD_CHARS]
 
