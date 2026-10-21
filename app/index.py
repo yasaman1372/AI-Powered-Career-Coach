@@ -17,7 +17,7 @@ from app.career_coach import (
     MockInterviewReply,
 )
 from app.cv_documents import CVDocumentError, extract_cv_text
-from app.job_search import JobOffer
+from app.job_search import JobOffer, search_jobs
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,15 @@ def health() -> dict[str, str]:
     """Report that the HTTP service is running."""
 
     return {"status": "ok"}
+
+
+@app.get("/jobs", response_model=list[JobOffer], response_model_exclude_none=True)
+def jobs(role: str, location: str = "", max_age_days: int = 0) -> list[JobOffer]:
+    """Search job boards directly, without calling the AI model."""
+
+    if not role.strip():
+        raise HTTPException(status_code=422, detail="Role must not be blank.")
+    return search_jobs(role, location, max(0, max_age_days))
 
 
 @app.post(

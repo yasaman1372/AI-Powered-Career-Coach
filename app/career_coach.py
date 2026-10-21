@@ -383,7 +383,7 @@ class CareerCoach:
 
         # Once a service is chosen, skip mode selection so short answers
         # such as "Junior" are not mistaken for an unclear service choice.
-        if mode in mode_models and previous_response_id:
+        if mode in mode_models:
             response = self._request(
                 user_message, mode_models[mode], previous_response_id, jobs
             )

@@ -1221,7 +1221,7 @@
           jobWizard.step = "location";
           renderUserMessage(text);
           assistantPrompt(
-            "Which location do you prefer? Type a city or country, or choose an option.",
+            "Where should I search? Enter a city, region, or country. Choose Remote for remote jobs, or Anywhere if you have no location preference.",
             ["Remote", "Anywhere"],
             handleJobWizardInput,
           );
@@ -1244,10 +1244,40 @@
           jobWizard = null;
           renderUserMessage(match[0]);
           const days = match[1];
-          const posted = days === 0 ? "any posting date" : `posted within the last ${days} day(s) (max_age_days=${days})`;
-          sendMessage(`Find me job openings. Role: ${role}. Location: ${location}. Posted: ${posted}.`, true);
+          runJobSearch(role, location, days);
         }
         scrollToLatest();
+      }
+
+      async function runJobSearch(role, location, days) {
+        busy = true;
+        sendButton.disabled = true;
+        showTyping();
+        scrollToLatest();
+        try {
+          const params = new URLSearchParams({ role, location: /^anywhere$/i.test(location) ? "" : location, max_age_days: String(days) });
+          const response = await fetch(normalizedApiUrl() + "/jobs?" + params);
+          if (!response.ok) throw new Error(`The job search failed (HTTP ${response.status}).`);
+          const offers = await response.json();
+          document.querySelector("#typingIndicator")?.remove();
+          renderAssistantReply(
+            {
+              message: offers.length
+                ? `I found ${offers.length} current opening(s) for ${role}. Choose "Tailor my CV for this job" on any card to adapt your CV.`
+                : "I couldn't find matching openings. Try broader keywords, another location, or a longer posting period.",
+            },
+            "career_advice",
+            offers,
+          );
+        } catch (error) {
+          document.querySelector("#typingIndicator")?.remove();
+          showError(error instanceof TypeError ? "Unable to reach the coach API. Make sure the backend is running." : error.message);
+        } finally {
+          busy = false;
+          sendButton.disabled = false;
+          messageInput.focus();
+          scrollToLatest();
+        }
       }
 
       function askRestartOrContinue(selectedMode, starterText) {
@@ -1333,7 +1363,7 @@
         messageInput.style.height = Math.min(messageInput.scrollHeight, 150) + "px";
       });
 
-      async function sendMessage(rawText, hidden = false) {
+      async function sendMessage(rawText, hidden = false, isolated = false) {
         const attachedFile = activeMode === "cv_review" ? cvFileInput.files[0] : null;
         const text = rawText.trim() || (attachedFile ? "Please review my CV." : "");
         if (!text || busy) return;
@@ -1375,8 +1405,8 @@
           requestOptions = { method: "POST", body: formData };
         } else {
           const body = { message: outgoingText };
-          if (previousResponseId) body.previous_response_id = previousResponseId;
-          if (activeMode && previousResponseId) body.mode = activeMode;
+          if (previousResponseId && !isolated) body.previous_response_id = previousResponseId;
+          if (activeMode && (previousResponseId || isolated)) body.mode = activeMode;
           requestOptions = {            method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
