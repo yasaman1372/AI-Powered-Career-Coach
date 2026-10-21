@@ -423,8 +423,17 @@
     }
     .option-button:hover:not(:disabled) { border-color: var(--rust); color: var(--rust); }
     .option-button:disabled { opacity: 0.55; cursor: default; }
-    .interview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-    .interview-actions .end-button { margin-left: auto; color: #854b37; border-color: #e3c4b7; }
+    .composer-actions {
+      display: flex;
+      flex: 0 0 100%;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 2px -6px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .composer-actions[hidden] { display: none; }
+    .composer-actions .end-button { margin-left: auto; color: #854b37; border-color: #e3c4b7; }
     .status-line {
       display: inline-flex;
       align-items: center;
@@ -486,6 +495,7 @@
 
     .composer {
       display: flex;
+      flex-wrap: wrap;
       align-items: flex-end;
       gap: 10px;
       width: min(100%, 820px);
@@ -750,6 +760,11 @@
           <button id="removeCvFile" class="remove-cv-button" type="button" aria-label="Remove attached CV" hidden>&times;</button>
         </div>
         <form id="chatForm" class="composer">
+          <div id="interviewActions" class="composer-actions" hidden>
+            <button type="button" class="option-button" data-action="evaluate">Evaluate my answer</button>
+            <button type="button" class="option-button" data-action="next">Next question</button>
+            <button type="button" class="option-button end-button" data-action="end">End interview</button>
+          </div>
           <label class="sr-only" for="messageInput">Your message</label>
           <textarea id="messageInput" rows="1" placeholder="Tell me what you are working toward..."></textarea>
           <button id="sendButton" class="send-button" type="submit"><span>Send</span><span aria-hidden="true">&rarr;</span></button>
@@ -782,6 +797,7 @@
       const messagesEl = document.querySelector("#messages");
       const welcomeEl = document.querySelector("#welcome");
       const errorBanner = document.querySelector("#errorBanner");
+      const interviewActions = document.querySelector("#interviewActions");
       let previousResponseId = null;
       let activeMode = null;
       let busy = false;
@@ -828,6 +844,30 @@
         section.append(heading, list);
         parent.append(section);
       }
+
+      function updateInterviewActions(reply, mode) {
+        interviewActions.hidden = !(mode === "mock_interview" && reply && reply.status === "in_progress");
+      }
+
+      interviewActions.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => {
+          if (busy) return;
+          const action = button.dataset.action;
+          if (action === "evaluate") {
+            const answer = messageInput.value.trim();
+            if (!answer) {
+              showError("Type your answer in the message box first, then click Evaluate my answer.");
+              messageInput.focus();
+              return;
+            }
+            sendMessage(`My answer: ${answer}\n\nEvaluate my answer.`);
+          } else if (action === "next") {
+            sendMessage("Next question");
+          } else {
+            sendMessage("End the interview");
+          }
+        });
+      });
 
       function renderAssistantReply(reply, mode) {
         const article = document.createElement("article");
@@ -916,39 +956,6 @@
         if (reply && Array.isArray(reply.improvements)) appendList(content, "Suggested improvements", reply.improvements);
         if (reply && Array.isArray(reply.action_steps)) appendList(content, "Next steps", reply.action_steps);
 
-        if (reply && reply.status === "in_progress" && mode === "mock_interview") {
-          const actions = document.createElement("div");
-          actions.className = "interview-actions";
-          const items = [
-            ["Evaluate my answer", "evaluate", ""],
-            ["Next question", "Next question", ""],
-            ["End interview", "End the interview", "end-button"],
-          ];
-          for (const [label, message, extraClass] of items) {
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = `option-button ${extraClass}`.trim();
-            button.textContent = label;
-            button.addEventListener("click", () => {
-              if (busy) return;
-              if (message === "evaluate") {
-                const answer = messageInput.value.trim();
-                if (!answer) {
-                  showError("Type your answer in the message box first, then click Evaluate my answer.");
-                  messageInput.focus();
-                  return;
-                }
-                sendMessage(`My answer: ${answer}\n\nEvaluate my answer.`);
-                return;
-              }
-              sendMessage(message);
-            });
-            actions.append(button);
-          }
-          document.querySelectorAll(".interview-actions button").forEach((item) => { item.disabled = true; });
-          content.append(actions);
-        }
-
         if (reply && typeof reply.status === "string") {
           const status = document.createElement("span");
           status.className = "status-line " + reply.status;
@@ -1032,6 +1039,7 @@
       document.querySelector("#newConversation").addEventListener("click", () => {
         previousResponseId = null;
         activeMode = null;
+        interviewActions.hidden = true;
         updateAttachmentVisibility();
         messagesEl.replaceChildren();
         welcomeEl.hidden = false;
@@ -1070,6 +1078,7 @@
         sendButton.disabled = true;
         messageInput.disabled = true;
         cvFileInput.disabled = true;
+        interviewActions.querySelectorAll("button").forEach((item) => { item.disabled = true; });
         showTyping();
         scrollToLatest();
 
@@ -1113,6 +1122,7 @@
           if (attachedFile) clearAttachedCV();
           document.querySelector("#typingIndicator")?.remove();
           renderAssistantReply(data.reply, activeMode);
+          updateInterviewActions(data.reply, activeMode);
         } catch (error) {
           document.querySelector("#typingIndicator")?.remove();
           const isNetworkError = error instanceof TypeError;
@@ -1124,6 +1134,7 @@
           sendButton.disabled = false;
           messageInput.disabled = false;
           cvFileInput.disabled = false;
+          interviewActions.querySelectorAll("button").forEach((item) => { item.disabled = false; });
           messageInput.focus();
           scrollToLatest();
         }
