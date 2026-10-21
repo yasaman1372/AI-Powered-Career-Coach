@@ -55,7 +55,7 @@ class ChatResponse(BaseModel):
 def home() -> FileResponse:
     """Serve the chat interface from the same host as the API."""
 
-    frontend_path = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
+    frontend_path = Path(__file__).resolve().parent.parent / "public" / "index.html"
     return FileResponse(frontend_path)
 
 
@@ -95,7 +95,7 @@ def chat(request: ChatRequest) -> ChatResponse:
         logger.exception("Unexpected error while handling chat request")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="The server encountered an unexpected error. Check the Render logs.",
+            detail="The server encountered an unexpected error. Check the server logs.",
         ) from error
 
 
@@ -141,5 +141,5 @@ async def chat_with_cv(
         logger.exception("Unexpected error while handling CV review request")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="The server encountered an unexpected error. Check the Render logs.",
+            detail="The server encountered an unexpected error. Check the server logs.",
         ) from error

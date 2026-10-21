@@ -734,7 +734,7 @@
       const IS_LOCAL = ["localhost", "127.0.0.1"].includes(window.location.hostname);
       const DEFAULT_API_URL = IS_LOCAL
         ? "http://localhost:8000"
-        : "https://ai-powered-career-coach.onrender.com";
+        : window.location.origin;
       const savedApiUrl = localStorage.getItem(API_KEY);
       const savedApiIsLocal = savedApiUrl && /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(savedApiUrl);
       const openedRemotely = window.location.hostname && !IS_LOCAL;
