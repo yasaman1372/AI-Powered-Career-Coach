@@ -316,6 +316,7 @@
     }
 
     .starter span { display: block; }
+    .starter:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - 5px); justify-self: center; }
     .starter-title { font-size: 12px; font-weight: 700; }
     .starter-copy { margin-top: 7px; color: var(--muted); font-size: 10px; line-height: 1.45; }
     .starter-arrow { margin-top: 9px; color: var(--rust); font-size: 13px; }
@@ -655,6 +656,7 @@
       .rail { padding-right: 15px; padding-left: 15px; }
       .topbar { min-height: 66px; }
       .starter-grid { grid-template-columns: 1fr; }
+      .starter:last-child:nth-child(odd) { grid-column: auto; width: 100%; }
       .starter { min-height: 0; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 10px; }
       .starter-title { grid-column: 1; }
       .starter-copy { grid-column: 1; margin-top: 1px; }
@@ -731,13 +733,17 @@
           <span class="service-index">04</span>
           <span><strong>Job search</strong><small>Find current openings for your next role</small></span>
         </button>
+        <button class="service-link" type="button" data-starter="learning_roadmap">
+          <span class="service-index">05</span>
+          <span><strong>Learning roadmap</strong><small>Build a personalized skill plan</small></span>
+        </button>
       </nav>
 
       <div class="rail-photo">
         <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&amp;fit=crop&amp;w=640&amp;q=82" alt="Colleagues collaborating around a table" loading="lazy">
         <div class="photo-caption">Good work starts with a conversation</div>
       </div>
-      <div class="rail-foot"><span>CAREER STUDIO</span><span>01 / 04</span></div>
+      <div class="rail-foot"><span>CAREER STUDIO</span><span>01 / 05</span></div>
     </aside>
 
     <main class="workspace">
@@ -758,7 +764,7 @@
           <div class="coach-mark" aria-hidden="true">C</div>
           <div class="welcome-body">
             <h1 class="welcome-title">Let's get you moving.</h1>
-            <p class="welcome-copy">I'm your career coach. We can sharpen your interview skills, make your CV work harder, explore a career decision, or find current job openings. Where would you like to begin?</p>
+            <p class="welcome-copy">I'm your career coach. We can sharpen your interview skills, make your CV work harder, explore a career decision, find current job openings, or build a personalized learning roadmap. Where would you like to begin?</p>
             <p class="starter-label">Choose a starting point</p>
             <div class="starter-grid">
               <button class="starter" type="button" data-starter="mock_interview">
@@ -779,6 +785,11 @@
               <button class="starter" type="button" data-starter="job_search">
                 <span class="starter-title">Job search</span>
                 <span class="starter-copy">Find current openings by role and location.</span>
+                <span class="starter-arrow" aria-hidden="true">&rarr;</span>
+              </button>
+              <button class="starter" type="button" data-starter="learning_roadmap">
+                <span class="starter-title">Learning roadmap</span>
+                <span class="starter-copy">Get a step-by-step plan for your next career goal.</span>
                 <span class="starter-arrow" aria-hidden="true">&rarr;</span>
               </button>
             </div>
@@ -880,6 +891,28 @@
           list.append(item);
         }
         section.append(heading, list);
+        parent.append(section);
+      }
+
+      function appendRoadmap(parent, phases) {
+        if (!Array.isArray(phases) || phases.length === 0) return;
+        const section = document.createElement("section");
+        section.className = "reply-section";
+        const heading = document.createElement("h3");
+        heading.textContent = "Your learning roadmap";
+        section.append(heading);
+        phases.forEach((phase, index) => {
+          const card = document.createElement("div");
+          card.className = "job-card";
+          const title = document.createElement("div");
+          title.className = "job-card-title";
+          title.textContent = `Phase ${index + 1}: ${phase.title} · ${phase.duration}`;
+          card.append(title);
+          appendList(card, "Focus", phase.focus);
+          appendList(card, "Learn and practise", phase.activities);
+          if (phase.deliverable) appendText(card, `Portfolio deliverable: ${phase.deliverable}`);
+          section.append(card);
+        });
         parent.append(section);
       }
 
@@ -1089,6 +1122,7 @@
         if (reply && Array.isArray(reply.strengths)) appendList(content, "Strengths", reply.strengths);
         if (reply && Array.isArray(reply.improvements)) appendList(content, "Suggested improvements", reply.improvements);
         if (reply && Array.isArray(reply.action_steps)) appendList(content, "Next steps", reply.action_steps);
+        if (reply && Array.isArray(reply.phases)) appendRoadmap(content, reply.phases);
 
         appendJobCards(content, jobs);
 
@@ -1189,12 +1223,18 @@
           previousResponseId = null;
           activeMode = null;
           interviewActions.hidden = true;
+          jobWizard = null;
+          roadmapWizard = null;
           clearError();
         }
         activeMode = selectedMode;
         updateAttachmentVisibility();
         if (starterText === JOB_SEARCH_START) {
           startJobWizard();
+          return;
+        }
+        if (starterText === ROADMAP_START) {
+          startRoadmapWizard();
           return;
         }
         sendMessage(starterText);
@@ -1209,6 +1249,10 @@
         ["Any time", 0],
       ];
       let jobWizard = null;
+      const ROADMAP_START = "__learning_roadmap__";
+      const ROADMAP_HOURS = ["2-3 hours/week", "4-6 hours/week", "7-10 hours/week", "10+ hours/week"];
+      const ROADMAP_TIMELINES = ["4 weeks", "8 weeks", "12 weeks", "6 months", "Flexible"];
+      let roadmapWizard = null;
 
       function assistantPrompt(question, choices, onChoice) {
         const article = document.createElement("article");
@@ -1229,7 +1273,7 @@
             button.className = "option-button";
             button.textContent = choice;
             button.addEventListener("click", () => {
-              if (!jobWizard || busy) return;
+              if ((!jobWizard && !roadmapWizard) || busy) return;
               group.querySelectorAll("button").forEach((item) => { item.disabled = true; });
               onChoice(choice);
             });
@@ -1247,6 +1291,42 @@
         jobWizard = { step: "role" };
         assistantPrompt("Which role are you looking for?", [], () => {});
         messageInput.focus();
+      }
+
+      function startRoadmapWizard() {
+        welcomeEl.hidden = true;
+        roadmapWizard = { step: "goal" };
+        assistantPrompt("What role or skill would you like to learn?", [], () => {});
+        messageInput.focus();
+      }
+
+      function handleRoadmapWizardInput(text) {
+        if (roadmapWizard.step === "goal") {
+          roadmapWizard.goal = text;
+          roadmapWizard.step = "experience";
+          renderUserMessage(text);
+          assistantPrompt("What do you already know, and what experience do you have with this goal?", [], () => {});
+        } else if (roadmapWizard.step === "experience") {
+          roadmapWizard.experience = text;
+          roadmapWizard.step = "hours";
+          renderUserMessage(text);
+          assistantPrompt("How much time can you study each week?", ROADMAP_HOURS, handleRoadmapWizardInput);
+        } else if (roadmapWizard.step === "hours") {
+          roadmapWizard.hours = text;
+          roadmapWizard.step = "timeline";
+          renderUserMessage(text);
+          assistantPrompt("When would you like to reach your goal?", ROADMAP_TIMELINES, handleRoadmapWizardInput);
+        } else if (roadmapWizard.step === "timeline") {
+          const details = { ...roadmapWizard, timeline: text };
+          roadmapWizard = null;
+          renderUserMessage(text);
+          sendMessage(
+            `Create a personalized learning roadmap. Goal: ${details.goal}. Current knowledge and experience: ${details.experience}. Study time: ${details.hours}. Target timeframe: ${details.timeline}.`,
+            true,
+            true,
+          );
+        }
+        scrollToLatest();
       }
 
       function handleJobWizardInput(text) {
@@ -1359,6 +1439,7 @@
             cv_review: "I would like a CV review.",
             career_advice: "I would like career advice.",
             job_search: JOB_SEARCH_START,
+            learning_roadmap: ROADMAP_START,
           };
           if (previousResponseId) {
             askRestartOrContinue(selectedMode, starters[requestedService]);
@@ -1370,6 +1451,7 @@
 
       document.querySelector("#newConversation").addEventListener("click", () => {
         jobWizard = null;
+        roadmapWizard = null;
         previousResponseId = null;
         activeMode = null;
         interviewActions.hidden = true;
@@ -1406,6 +1488,13 @@
           messageInput.value = "";
           messageInput.style.height = "auto";
           handleJobWizardInput(text);
+          return;
+        }
+        if (roadmapWizard && !hidden) {
+          clearError();
+          messageInput.value = "";
+          messageInput.style.height = "auto";
+          handleRoadmapWizardInput(text);
           return;
         }
         if (pendingTargetJob && !attachedFile) {

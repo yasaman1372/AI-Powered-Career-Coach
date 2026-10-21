@@ -13,6 +13,7 @@ from app.career_coach import (
     CareerAdviceReply,
     CareerCoach,
     CVReviewReply,
+    LearningRoadmapReply,
     ModeSelection,
     MockInterviewReply,
 )
@@ -46,13 +47,13 @@ class ChatRequest(BaseModel):
 
     message: str = Field(min_length=1)
     previous_response_id: str | None = None
-    mode: Literal["mock_interview", "cv_review", "career_advice"] | None = None
+    mode: Literal["mock_interview", "cv_review", "career_advice", "learning_roadmap"] | None = None
 
 
 class ChatResponse(BaseModel):
     response_id: str
-    mode: Literal["mock_interview", "cv_review", "career_advice"] | None = None
-    reply: ModeSelection | MockInterviewReply | CVReviewReply | CareerAdviceReply
+    mode: Literal["mock_interview", "cv_review", "career_advice", "learning_roadmap"] | None = None
+    reply: ModeSelection | MockInterviewReply | CVReviewReply | CareerAdviceReply | LearningRoadmapReply
     jobs: list[JobOffer] | None = None
 
 

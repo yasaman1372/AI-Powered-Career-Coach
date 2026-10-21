@@ -1,14 +1,16 @@
 # AI-Powered Career Coach
 
-An AI career coach for mock interviews, CV feedback, career advice, job search, and tailoring a CV to a selected job listing.
+An AI career coach for mock interviews, CV feedback, career advice, personalized learning roadmaps, job search, and tailoring a CV to a selected job listing.
 
 ## Features
 
 - **Mock interview:** guided setup, realistic interview questions, answer evaluation, skip, and end controls.
 - **CV review:** upload a PDF or DOCX to receive strengths and improvement suggestions.
 - **Career advice:** get practical, personalized guidance.
-- **Job search:** search job listings from Remotive (remote roles) and Arbeitnow (primarily European roles). Results show as linked cards with source, location, type, salary when available, and posting date.
+- **Personalized learning roadmap:** create a step-by-step learning plan based on a target role or skill, existing experience, weekly study time, and target timeframe.
+- **Job search:** search job listings from Remotive, Arbeitnow, Jobicy, Remote OK, and The Muse. Results show as linked cards with source, location, type, salary when available, and posting date.
 - **CV tailoring:** select **Tailor my CV for this job** on a job card, upload a PDF or DOCX, and receive a draft tailored to the listing. The coach is instructed not to invent experience or qualifications.
+- **CV export:** download tailored drafts as a formatted PDF or editable DOCX.
 - **Job-ad links:** the coach attempts to read public job pages. Some sites, including LinkedIn, require a login or block automated access; paste the job description into chat when a link cannot be read.
 
 Job search uses public APIs and does not require separate API keys. Listing availability and location coverage depend on the sources.
@@ -48,6 +50,8 @@ The main routes are:
 - `GET /health` — health check
 - `POST /chat` — chat and job search
 - `POST /chat/cv-review` — PDF or DOCX CV review and tailoring
+- `POST /cv/pdf` — render a tailored CV as PDF
+- `POST /cv/docx` — render a tailored CV as editable DOCX
 
 CV uploads are limited to 5 MB.
 
@@ -62,9 +66,11 @@ For Vercel, import the repository, configure the Python/FastAPI application entr
 ```text
 app/
   career_coach.py  AI prompts, responses, and tool handling
+  cv_docx.py       Editable DOCX generation
   cv_documents.py  PDF/DOCX text extraction
+  cv_pdf.py        Formatted PDF generation
   index.py         FastAPI routes and app entry point
-  job_search.py    Remotive and Arbeitnow search
+  job_search.py    Public job-board search
 public/
   index.html       Frontend
 requirements.txt   Python dependencies

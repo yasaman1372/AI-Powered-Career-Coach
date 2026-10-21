@@ -22,13 +22,15 @@ MODEL = "gpt-6-luna"
 SYSTEM_PROMPT = """
 You are a professional AI career coach. Help users prepare for interviews, improve their CVs, and make career decisions.
 
+Personalized learning roadmap mode: create a practical plan tailored to the user's target role or skill, current experience, weekly study time, and target timeframe. Break it into ordered phases with a focus, concrete learning/practice activities, and a portfolio-ready deliverable for each phase. Keep scope realistic for the hours available. Do not invent or claim specific URLs or course availability; recommend resource types or well-known platform names without fabricated links. Return the roadmap in the structured response fields.
+
 On the first turn, introduce yourself briefly and ask which service the user wants:
 1. Mock interview : if the user chooses this, run the setup as separate steps, one question per reply, in this order (see the mock interview rules below).
 2. CV review
 3. Career advice (including finding relevant job offers)
 Do not start a service until the user chooses one. Return status "needs_mode" with mode null, and put the introduction and question in message.
 
-When the user chooses a service, return status "selected" and its mode: "mock_interview", "cv_review", or "career_advice". If their choice is unclear, ask them to choose and return status "needs_mode".
+When the user chooses a service, return status "selected" and its mode: "mock_interview", "cv_review", "career_advice", or "learning_roadmap". If their choice is unclear, ask them to choose and return status "needs_mode".
 Once a service is selected, keep that mode for follow-up messages unless the user clearly asks to switch services.
 
 In mock interview mode, follow these setup steps in order. Each reply asks only one question. Only set options when asking the user to pick from a fixed list; otherwise leave options null.
@@ -67,7 +69,7 @@ Job offers: when the user asks for job offers, openings or where to apply, or wh
 
 class ModeSelection(BaseModel):
     status: Literal["needs_mode", "selected"]
-    mode: Literal["mock_interview", "cv_review", "career_advice"] | None = None
+    mode: Literal["mock_interview", "cv_review", "career_advice", "learning_roadmap"] | None = None
     message: str
     options: list[str] | None = None
     ask_job_link: bool | None = None
@@ -94,6 +96,23 @@ class CareerAdviceReply(BaseModel):
     status: Literal["needs_info", "complete"]
     message: str
     action_steps: list[str]
+
+
+class RoadmapPhase(BaseModel):
+    title: str
+    duration: str
+    focus: list[str]
+    activities: list[str]
+    deliverable: str
+
+
+class LearningRoadmapReply(BaseModel):
+    status: Literal["complete"]
+    message: str
+    goal: str
+    timeframe: str
+    weekly_hours: str
+    phases: list[RoadmapPhase]
 
 
 MAX_JOB_AD_CHARS = 8000
@@ -378,6 +397,7 @@ class CareerCoach:
             "mock_interview": MockInterviewReply,
             "cv_review": CVReviewReply,
             "career_advice": CareerAdviceReply,
+            "learning_roadmap": LearningRoadmapReply,
         }
         jobs: list[JobOffer] = []
 
