@@ -584,6 +584,32 @@
 
     .attachment-note { color: var(--muted); font-size: 10px; }
 
+    .job-link-attachment {
+      display: flex;
+      width: min(100%, 820px);
+      align-items: center;
+      gap: 10px;
+      margin: 0 auto 8px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .job-link-attachment[hidden] { display: none; }
+
+    .job-link-attachment input {
+      flex: 1;
+      min-width: 0;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      color: var(--ink);
+      background: white;
+      font: inherit;
+      font-size: 12px;
+    }
+
+    .job-link-attachment input:focus { outline: none; border-color: #8ea99a; }
+
     .mobile-brand { display: none; }
 
     @keyframes rise {
@@ -732,6 +758,10 @@
           <span id="cvFileName" class="cv-file-name" hidden></span>
           <button id="removeCvFile" class="remove-cv-button" type="button" aria-label="Remove attached CV" hidden>&times;</button>
         </div>
+        <div id="jobLinkAttachment" class="job-link-attachment" hidden>
+          <label for="jobLinkInput">Job ad link (optional)</label>
+          <input id="jobLinkInput" type="url" placeholder="https://company.com/jobs/..." autocomplete="off">
+        </div>
         <form id="chatForm" class="composer">
           <label class="sr-only" for="messageInput">Your message</label>
           <textarea id="messageInput" rows="1" placeholder="Tell me what you are working toward..."></textarea>
@@ -762,6 +792,8 @@
       const cvFileInput = document.querySelector("#cvFileInput");
       const cvFileName = document.querySelector("#cvFileName");
       const removeCvFileButton = document.querySelector("#removeCvFile");
+      const jobLinkAttachment = document.querySelector("#jobLinkAttachment");
+      const jobLinkInput = document.querySelector("#jobLinkInput");
       const messagesEl = document.querySelector("#messages");
       const welcomeEl = document.querySelector("#welcome");
       const errorBanner = document.querySelector("#errorBanner");
@@ -886,6 +918,8 @@
         const canAttach = activeMode === "cv_review";
         cvAttachment.hidden = !canAttach;
         if (!canAttach) clearAttachedCV();
+        jobLinkAttachment.hidden = activeMode !== "mock_interview";
+        if (jobLinkAttachment.hidden) jobLinkInput.value = "";
       }
 
       function clearAttachedCV() {
@@ -969,17 +1003,30 @@
 
       async function sendMessage(rawText) {
         const attachedFile = activeMode === "cv_review" ? cvFileInput.files[0] : null;
-        const text = rawText.trim() || (attachedFile ? "Please review my CV." : "");
+        const pendingJobLink = activeMode === "mock_interview" ? jobLinkInput.value.trim() : "";
+        const text = rawText.trim() || (attachedFile ? "Please review my CV." : "") || (pendingJobLink ? "Here is the job advertisement." : "");
         if (!text || busy) return;
         clearError();
         welcomeEl.hidden = true;
+        const jobLink = pendingJobLink;
+        if (jobLink && !/^https?:\/\/\S+$/i.test(jobLink)) {
+          showError("Please enter a valid job ad link starting with http:// or https://");
+          return;
+        }
         renderUserMessage(text, attachedFile?.name);
+        if (jobLink) {
+          const lastBubble = messagesEl.lastElementChild.querySelector(".message-content");
+          appendText(lastBubble, `Job ad link: ${jobLink}`, "attachment-note");
+        }
+        jobLinkInput.value = "";
+        const outgoingText = jobLink ? `${text}\n\nJob advertisement link: ${jobLink}` : text;
         messageInput.value = "";
         messageInput.style.height = "auto";
         busy = true;
         sendButton.disabled = true;
         messageInput.disabled = true;
         cvFileInput.disabled = true;
+        jobLinkInput.disabled = true;
         showTyping();
         scrollToLatest();
 
@@ -987,13 +1034,13 @@
         let requestOptions;
         if (attachedFile) {
           const formData = new FormData();
-          formData.set("message", text);
+          formData.set("message", outgoingText);
           formData.set("file", attachedFile);
           if (previousResponseId) formData.set("previous_response_id", previousResponseId);
           requestUrl = normalizedApiUrl() + "/chat/cv-review";
           requestOptions = { method: "POST", body: formData };
         } else {
-          const body = { message: text };
+          const body = { message: outgoingText };
           if (previousResponseId) body.previous_response_id = previousResponseId;
           requestOptions = {
             method: "POST",
@@ -1034,6 +1081,7 @@
           sendButton.disabled = false;
           messageInput.disabled = false;
           cvFileInput.disabled = false;
+          jobLinkInput.disabled = false;
           messageInput.focus();
           scrollToLatest();
         }
