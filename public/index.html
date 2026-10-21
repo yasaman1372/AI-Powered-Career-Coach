@@ -715,13 +715,17 @@
           <span class="service-index">03</span>
           <span><strong>Career advice</strong><small>Next steps and job offers</small></span>
         </button>
+        <button class="service-link" type="button" data-starter="job_search">
+          <span class="service-index">04</span>
+          <span><strong>Job search</strong><small>Find current openings for your next role</small></span>
+        </button>
       </nav>
 
       <div class="rail-photo">
         <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&amp;fit=crop&amp;w=640&amp;q=82" alt="Colleagues collaborating around a table" loading="lazy">
         <div class="photo-caption">Good work starts with a conversation</div>
       </div>
-      <div class="rail-foot"><span>CAREER STUDIO</span><span>01 / 03</span></div>
+      <div class="rail-foot"><span>CAREER STUDIO</span><span>01 / 04</span></div>
     </aside>
 
     <main class="workspace">
@@ -742,7 +746,7 @@
           <div class="coach-mark" aria-hidden="true">C</div>
           <div class="welcome-body">
             <h1 class="welcome-title">Let's get you moving.</h1>
-            <p class="welcome-copy">I'm your career coach. We can sharpen your interview skills, make your CV work harder, or untangle a career decision. Where would you like to begin?</p>
+            <p class="welcome-copy">I'm your career coach. We can sharpen your interview skills, make your CV work harder, explore a career decision, or find current job openings. Where would you like to begin?</p>
             <p class="starter-label">Choose a starting point</p>
             <div class="starter-grid">
               <button class="starter" type="button" data-starter="mock_interview">
@@ -758,6 +762,11 @@
               <button class="starter" type="button" data-starter="career_advice">
                 <span class="starter-title">Career advice</span>
                 <span class="starter-copy">Work through a goal and find job offers.</span>
+                <span class="starter-arrow" aria-hidden="true">&rarr;</span>
+              </button>
+              <button class="starter" type="button" data-starter="job_search">
+                <span class="starter-title">Job search</span>
+                <span class="starter-copy">Find current openings by role and location.</span>
                 <span class="starter-arrow" aria-hidden="true">&rarr;</span>
               </button>
             </div>
@@ -1139,17 +1148,19 @@
       document.querySelectorAll("[data-starter]").forEach((button) => {
         button.addEventListener("click", () => {
           if (busy) return;
-          const selectedMode = button.dataset.starter;
+          const requestedService = button.dataset.starter;
+          const selectedMode = requestedService === "job_search" ? "career_advice" : requestedService;
           const starters = {
             mock_interview: "I would like to do a mock interview.",
             cv_review: "I would like a CV review.",
             career_advice: "I would like career advice.",
+            job_search: "I want to search for current job openings. Ask me which role I'm looking for and my preferred location, then show me matching listings.",
           };
           if (previousResponseId) {
-            askRestartOrContinue(selectedMode, starters[selectedMode]);
+            askRestartOrContinue(selectedMode, starters[requestedService]);
             return;
           }
-          startService(selectedMode, starters[selectedMode], false);
+          startService(selectedMode, starters[requestedService], false);
         });
       });
 
