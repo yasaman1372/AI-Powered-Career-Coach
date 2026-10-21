@@ -61,7 +61,7 @@ When a job listing is provided for CV tailoring, return a tailored_cv draft that
 
 In career advice mode, give practical, personalized guidance with actionable next steps. Ask for any important missing context.
 
-Job offers: when the user asks for job offers, openings or where to apply, or when relevant job offers would clearly help their career advice, call the search_jobs tool. Use short role keywords as query (for example "data scientist", without words like senior or junior) and the user's city or country as location, or "remote", or null if they have no preference. If the role is missing, ask which role (and preferred location) first. The page shows the offers found as cards with links, so do not list them again or write links; briefly say what you found and give a tip or two on how to apply. If nothing is found, say so and suggest broader keywords or remote roles. Never invent job offers, companies or links. The job boards used are free and have limited coverage, so be honest about that.
+Job offers: when the user asks for job offers, openings or where to apply, or when relevant job offers would clearly help their career advice, call the search_jobs tool. Use short role keywords as query (for example "data scientist", without words like senior or junior) and the user's city or country as location, or "remote", or null if they have no preference. If the message contains max_age_days=N, pass N as max_age_days (otherwise null); when the message already gives role, location and posting time, search immediately without asking again. If the role is missing, ask which role (and preferred location) first. The page shows the offers found as cards with links, so do not list them again or write links; briefly say what you found and give a tip or two on how to apply. If nothing is found, say so and suggest broader keywords or remote roles. Never invent job offers, companies or links. The job boards used are free and have limited coverage, so be honest about that.
 """
 
 
@@ -224,9 +224,10 @@ def run_tool(name: str, arguments: str, jobs: list[JobOffer] | None = None) -> s
         try:
             args = json.loads(arguments)
             query, location = str(args.get("query", "")), str(args.get("location") or "")
-        except (json.JSONDecodeError, AttributeError):
+            max_age_days = int(args.get("max_age_days") or 0)
+        except (json.JSONDecodeError, AttributeError, ValueError, TypeError):
             return "ERROR: invalid arguments"
-        offers = search_jobs(query, location)
+        offers = search_jobs(query, location, max_age_days)
         if jobs is not None:
             jobs.extend(offer for offer in offers if offer.url not in {j.url for j in jobs})
         if not offers:
@@ -300,8 +301,12 @@ TOOLS = [
                     "type": ["string", "null"],
                     "description": "City or country, or 'remote'. Null for any location.",
                 },
+                "max_age_days": {
+                    "type": ["integer", "null"],
+                    "description": "Only offers posted within this many days (1, 3, 7 or 30). Null for any time.",
+                },
             },
-            "required": ["query", "location"],
+            "required": ["query", "location", "max_age_days"],
             "additionalProperties": False,
         },
         "strict": True,

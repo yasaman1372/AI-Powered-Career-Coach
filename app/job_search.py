@@ -142,8 +142,21 @@ def _search_arbeitnow(query: str, location: str) -> list[JobOffer]:
     return [offer for _, offer in scored]
 
 
-def search_jobs(query: str, location: str = "") -> list[JobOffer]:
-    """Search Remotive and Arbeitnow for job offers; a failing source is skipped."""
+def _recent_enough(posted: str | None, max_age_days: int) -> bool:
+    if not max_age_days or not posted:
+        return True
+    try:
+        date = datetime.strptime(posted[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return True
+    return (datetime.now(timezone.utc) - date).days <= max_age_days
+
+
+def search_jobs(query: str, location: str = "", max_age_days: int = 0) -> list[JobOffer]:
+    """Search Remotive and Arbeitnow for job offers; a failing source is skipped.
+
+    max_age_days > 0 keeps only offers posted within that many days.
+    """
 
     query = query.strip()
     if not query:
@@ -162,7 +175,7 @@ def search_jobs(query: str, location: str = "") -> list[JobOffer]:
     seen: set[str] = set()
     for pair in zip_longest(remotive, arbeitnow):
         for offer in pair:
-            if offer and offer.url and offer.url not in seen:
+            if offer and offer.url and offer.url not in seen and _recent_enough(offer.posted, max_age_days):
                 seen.add(offer.url)
                 results.append(offer)
     return results[:MAX_RESULTS]

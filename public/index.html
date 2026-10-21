@@ -294,7 +294,7 @@
 
     .starter-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 9px;
     }
 
@@ -1159,7 +1159,95 @@
         }
         activeMode = selectedMode;
         updateAttachmentVisibility();
+        if (starterText === JOB_SEARCH_START) {
+          startJobWizard();
+          return;
+        }
         sendMessage(starterText);
+      }
+
+      const JOB_SEARCH_START = "__job_search__";
+      const POSTED_CHOICES = [
+        ["Last 24 hours", 1],
+        ["Last 3 days", 3],
+        ["Last week", 7],
+        ["Last month", 30],
+        ["Any time", 0],
+      ];
+      let jobWizard = null;
+
+      function assistantPrompt(question, choices, onChoice) {
+        const article = document.createElement("article");
+        article.className = "message assistant";
+        const avatar = document.createElement("div");
+        avatar.className = "message-avatar";
+        avatar.setAttribute("aria-hidden", "true");
+        avatar.textContent = "C";
+        const content = document.createElement("div");
+        content.className = "message-content";
+        appendText(content, question);
+        if (choices.length > 0) {
+          const group = document.createElement("div");
+          group.className = "option-buttons";
+          for (const choice of choices) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "option-button";
+            button.textContent = choice;
+            button.addEventListener("click", () => {
+              if (!jobWizard || busy) return;
+              group.querySelectorAll("button").forEach((item) => { item.disabled = true; });
+              onChoice(choice);
+            });
+            group.append(button);
+          }
+          content.append(group);
+        }
+        article.append(avatar, content);
+        messagesEl.append(article);
+        scrollToLatest();
+      }
+
+      function startJobWizard() {
+        welcomeEl.hidden = true;
+        jobWizard = { step: "role" };
+        assistantPrompt("Which role are you looking for?", [], () => {});
+        messageInput.focus();
+      }
+
+      function handleJobWizardInput(text) {
+        if (jobWizard.step === "role") {
+          jobWizard.role = text;
+          jobWizard.step = "location";
+          renderUserMessage(text);
+          assistantPrompt(
+            "Which location do you prefer? Type a city or country, or choose an option.",
+            ["Remote", "Anywhere"],
+            handleJobWizardInput,
+          );
+        } else if (jobWizard.step === "location") {
+          jobWizard.location = text;
+          jobWizard.step = "posted";
+          renderUserMessage(text);
+          assistantPrompt(
+            "How recently should the jobs have been posted?",
+            POSTED_CHOICES.map(([label]) => label),
+            handleJobWizardInput,
+          );
+        } else if (jobWizard.step === "posted") {
+          const match = POSTED_CHOICES.find(([label]) => label.toLowerCase() === text.toLowerCase());
+          if (!match) {
+            showError("Please choose one of the posting-time buttons.");
+            return;
+          }
+          const { role, location } = jobWizard;
+          jobWizard = null;
+          renderUserMessage(match[0]);
+          const days = match[1];
+          const posted = days === 0 ? "any posting date" : `posted within the last ${days} day(s) (max_age_days=${days})`;
+          sendMessage(`Find me job openings. Role: ${role}. Location: ${location}. Posted: ${posted}.`, true);
+        }
+        scrollToLatest();
       }
 
       function askRestartOrContinue(selectedMode, starterText) {
@@ -1206,7 +1294,7 @@
             mock_interview: "I would like to do a mock interview.",
             cv_review: "I would like a CV review.",
             career_advice: "I would like career advice.",
-            job_search: "I want to search for current job openings. Ask me which role I'm looking for and my preferred location, then show me matching listings.",
+            job_search: JOB_SEARCH_START,
           };
           if (previousResponseId) {
             askRestartOrContinue(selectedMode, starters[requestedService]);
@@ -1217,6 +1305,7 @@
       });
 
       document.querySelector("#newConversation").addEventListener("click", () => {
+        jobWizard = null;
         previousResponseId = null;
         activeMode = null;
         interviewActions.hidden = true;
@@ -1244,10 +1333,17 @@
         messageInput.style.height = Math.min(messageInput.scrollHeight, 150) + "px";
       });
 
-      async function sendMessage(rawText) {
+      async function sendMessage(rawText, hidden = false) {
         const attachedFile = activeMode === "cv_review" ? cvFileInput.files[0] : null;
         const text = rawText.trim() || (attachedFile ? "Please review my CV." : "");
         if (!text || busy) return;
+        if (jobWizard && !hidden) {
+          clearError();
+          messageInput.value = "";
+          messageInput.style.height = "auto";
+          handleJobWizardInput(text);
+          return;
+        }
         if (pendingTargetJob && !attachedFile) {
           showError("Attach your CV before sending a tailoring request.");
           cvFileInput.click();
@@ -1255,7 +1351,7 @@
         }
         clearError();
         welcomeEl.hidden = true;
-        renderUserMessage(text, attachedFile?.name);
+        if (!hidden) renderUserMessage(text, attachedFile?.name);
         const outgoingText = text;
         messageInput.value = "";
         messageInput.style.height = "auto";
