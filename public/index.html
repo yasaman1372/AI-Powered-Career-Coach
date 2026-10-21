@@ -956,6 +956,28 @@
         if (reply && Array.isArray(reply.improvements)) appendList(content, "Suggested improvements", reply.improvements);
         if (reply && Array.isArray(reply.action_steps)) appendList(content, "Next steps", reply.action_steps);
 
+        if (reply && reply.status === "complete" && mode === "mock_interview") {
+          const group = document.createElement("div");
+          group.className = "option-buttons";
+          const endChoices = [
+            ["Start a new interview", () => startService("mock_interview", "I would like to do a mock interview.", true)],
+            ["Choose another service", () => document.querySelector("#newConversation").click()],
+          ];
+          for (const [label, action] of endChoices) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "option-button";
+            button.textContent = label;
+            button.addEventListener("click", () => {
+              if (busy) return;
+              group.querySelectorAll("button").forEach((item) => { item.disabled = true; });
+              action();
+            });
+            group.append(button);
+          }
+          content.append(group);
+        }
+
         if (reply && typeof reply.status === "string") {
           const status = document.createElement("span");
           status.className = "status-line " + reply.status;
@@ -1022,17 +1044,67 @@
         messagesEl.append(article);
       }
 
+      function startService(selectedMode, starterText, fresh) {
+        if (fresh) {
+          previousResponseId = null;
+          activeMode = null;
+          interviewActions.hidden = true;
+          clearError();
+        }
+        activeMode = selectedMode;
+        updateAttachmentVisibility();
+        sendMessage(starterText);
+      }
+
+      function askRestartOrContinue(selectedMode, starterText) {
+        document.querySelector("#restartPrompt")?.remove();
+        const article = document.createElement("article");
+        article.className = "message assistant";
+        article.id = "restartPrompt";
+        const avatar = document.createElement("div");
+        avatar.className = "message-avatar";
+        avatar.setAttribute("aria-hidden", "true");
+        avatar.textContent = "C";
+        const content = document.createElement("div");
+        content.className = "message-content";
+        appendText(content, "You already have a conversation going. Do you want to start this service from scratch, or continue the current conversation?");
+        const group = document.createElement("div");
+        group.className = "option-buttons";
+        const choices = [
+          ["Start fresh", true],
+          ["Continue current conversation", false],
+        ];
+        for (const [label, fresh] of choices) {
+          const choice = document.createElement("button");
+          choice.type = "button";
+          choice.className = "option-button";
+          choice.textContent = label;
+          choice.addEventListener("click", () => {
+            article.remove();
+            startService(selectedMode, starterText, fresh);
+          });
+          group.append(choice);
+        }
+        content.append(group);
+        article.append(avatar, content);
+        messagesEl.append(article);
+        scrollToLatest();
+      }
+
       document.querySelectorAll("[data-starter]").forEach((button) => {
         button.addEventListener("click", () => {
+          if (busy) return;
           const selectedMode = button.dataset.starter;
           const starters = {
             mock_interview: "I would like to do a mock interview.",
             cv_review: "I would like a CV review.",
             career_advice: "I would like career advice.",
           };
-          activeMode = selectedMode;
-          updateAttachmentVisibility();
-          sendMessage(starters[selectedMode]);
+          if (previousResponseId) {
+            askRestartOrContinue(selectedMode, starters[selectedMode]);
+            return;
+          }
+          startService(selectedMode, starters[selectedMode], false);
         });
       });
 
