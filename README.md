@@ -9,6 +9,7 @@ An AI career coach for mock interviews, CV feedback, career advice, personalized
 - **Career advice:** get practical, personalized guidance.
 - **Personalized learning roadmap:** create a step-by-step learning plan based on a target role or skill, existing experience, weekly study time, and target timeframe.
 - **Job search:** search job listings from Remotive, Arbeitnow, Jobicy, Remote OK, and The Muse. Results show as linked cards with source, location, type, salary when available, and posting date.
+- **CV job-match score:** optionally upload a CV from a job card to get an evidence-based match score, listed qualifications, gaps, and suggestions for that role.
 - **CV tailoring:** select **Tailor my CV for this job** on a job card, upload a PDF or DOCX, and receive a draft tailored to the listing. The coach is instructed not to invent experience or qualifications.
 - **CV export:** download tailored drafts as a formatted PDF or editable DOCX.
 - **Job-ad links:** the coach attempts to read public job pages. Some sites, including LinkedIn, require a login or block automated access; paste the job description into chat when a link cannot be read.

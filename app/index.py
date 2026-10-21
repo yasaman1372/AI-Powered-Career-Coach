@@ -13,6 +13,7 @@ from app.career_coach import (
     CareerAdviceReply,
     CareerCoach,
     CVReviewReply,
+    JobMatchReply,
     LearningRoadmapReply,
     ModeSelection,
     MockInterviewReply,
@@ -53,7 +54,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response_id: str
     mode: Literal["mock_interview", "cv_review", "career_advice", "learning_roadmap"] | None = None
-    reply: ModeSelection | MockInterviewReply | CVReviewReply | CareerAdviceReply | LearningRoadmapReply
+    reply: ModeSelection | MockInterviewReply | CVReviewReply | JobMatchReply | CareerAdviceReply | LearningRoadmapReply
     jobs: list[JobOffer] | None = None
 
 
@@ -187,6 +188,48 @@ async def chat_with_cv(
         ) from error
     except Exception as error:
         logger.exception("Unexpected error while handling CV review request")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="The server encountered an unexpected error. Check the server logs.",
+        ) from error
+
+
+@app.post(
+    "/chat/job-match-score",
+    response_model=ChatResponse,
+    response_model_exclude_none=True,
+)
+async def score_job_match(
+    target_job: str = Form(...),
+    file: UploadFile = File(...),
+) -> ChatResponse:
+    """Compare an uploaded CV with a selected job listing."""
+
+    content = await file.read(MAX_CV_FILE_BYTES + 1)
+    await file.close()
+    if len(content) > MAX_CV_FILE_BYTES:
+        raise HTTPException(status_code=413, detail="CV files must be 5 MB or smaller.")
+
+    try:
+        cv_text = extract_cv_text(file.filename or "", content)
+        job = JobOffer.model_validate_json(target_job)
+    except CVDocumentError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except ValidationError as error:
+        raise HTTPException(status_code=422, detail="The selected job listing is invalid.") from error
+
+    try:
+        return ChatResponse(
+            **coach.score_job_match(cv_text, file.filename or "uploaded CV", job)
+        )
+    except OpenAIError as error:
+        logger.exception("OpenAI job match score request failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The AI provider could not calculate the job match score.",
+        ) from error
+    except Exception as error:
+        logger.exception("Unexpected error while calculating job match score")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="The server encountered an unexpected error. Check the server logs.",

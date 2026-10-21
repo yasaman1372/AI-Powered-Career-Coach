@@ -438,6 +438,7 @@
     .job-card-title { font-size: 13px; font-weight: 700; }
     .job-card-meta { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.5; }
     .job-card-source { margin-top: 5px; color: var(--rust); font-size: 10px; font-weight: 600; }
+    .match-score { margin: 12px 0; color: var(--green); font-size: 24px; font-weight: 700; }
     .job-card-actions { margin-top: 9px; }
     .tailored-cv {
       max-height: 600px;
@@ -1011,26 +1012,42 @@
           jobLink.textContent = `View on ${job.source} →`;
           const actions = document.createElement("div");
           actions.className = "job-card-actions";
+          const matchButton = document.createElement("button");
+          matchButton.type = "button";
+          matchButton.className = "option-button";
+          matchButton.textContent = "Get match score";
+          matchButton.addEventListener("click", () => {
+            prepareJobCVAction(job, "match_score");
+          });
           const tailorButton = document.createElement("button");
           tailorButton.type = "button";
           tailorButton.className = "option-button";
           tailorButton.textContent = "Tailor my CV for this job";
           tailorButton.addEventListener("click", () => {
-            pendingTargetJob = job;
-            previousResponseId = null;
-            activeMode = "cv_review";
-            clearAttachedCV();
-            updateAttachmentVisibility();
-            cvUploadHint.textContent = `Attach CV for ${job.title} at ${job.company}`;
-            messageInput.value = `Please tailor my CV for the ${job.title} role at ${job.company}.`;
-            showError("Choose your CV file, then send it to generate a tailored draft.");
-            cvFileInput.click();
+            prepareJobCVAction(job, "tailor");
           });
-          actions.append(tailorButton);
+          actions.append(matchButton, tailorButton);
           card.append(title, meta, jobLink, actions);
           list.append(card);
         }
         if (list.children.length > 0) parent.append(list);
+      }
+
+      function prepareJobCVAction(job, action) {
+        pendingTargetJob = job;
+        pendingJobAction = action;
+        previousResponseId = null;
+        activeMode = "cv_review";
+        clearAttachedCV();
+        updateAttachmentVisibility();
+        cvUploadHint.textContent = `Attach CV for ${job.title} at ${job.company}`;
+        messageInput.value = action === "match_score"
+          ? `Please compare my CV with the ${job.title} role at ${job.company}.`
+          : `Please tailor my CV for the ${job.title} role at ${job.company}.`;
+        showError(action === "match_score"
+          ? "Choose your CV file, then send it to calculate your match score."
+          : "Choose your CV file, then send it to generate a tailored draft.");
+        cvFileInput.click();
       }
 
       function renderAssistantReply(reply, mode, jobs) {
@@ -1058,6 +1075,12 @@
 
         if (reply && typeof reply.message === "string") appendText(content, reply.message);
         if (reply && typeof reply.summary === "string") appendText(content, reply.summary);
+        if (reply && Number.isInteger(reply.match_score)) {
+          appendText(content, `CV match score: ${reply.match_score}/100`, "match-score");
+          appendList(content, "Qualifications shown in your CV", reply.matched_qualifications);
+          appendList(content, "Gaps or details not shown", reply.gaps);
+          appendList(content, "Suggestions", reply.suggestions);
+        }
         if (reply && typeof reply.tailored_cv === "string") {
           appendPreformatted(content, "Tailored CV draft", reply.tailored_cv);
         }
@@ -1176,9 +1199,12 @@
         if (!canAttach) {
           clearAttachedCV();
           pendingTargetJob = null;
+          pendingJobAction = null;
           cvUploadHint.textContent = "Attach CV (PDF or DOCX)";
         }
       }
+
+      let pendingJobAction = null;
 
       function clearAttachedCV() {
         cvFileInput.value = "";
@@ -1524,7 +1550,7 @@
           formData.set("file", attachedFile);
           if (pendingTargetJob) formData.set("target_job", JSON.stringify(pendingTargetJob));
           if (previousResponseId) formData.set("previous_response_id", previousResponseId);
-          requestUrl = normalizedApiUrl() + "/chat/cv-review";
+          requestUrl = normalizedApiUrl() + (pendingJobAction === "match_score" ? "/chat/job-match-score" : "/chat/cv-review");
           requestOptions = { method: "POST", body: formData };
         } else {
           const body = { message: outgoingText };
@@ -1557,6 +1583,7 @@
           if (attachedFile) {
             clearAttachedCV();
             pendingTargetJob = null;
+            pendingJobAction = null;
             cvUploadHint.textContent = "Attach CV (PDF or DOCX)";
           }
           document.querySelector("#typingIndicator")?.remove();
