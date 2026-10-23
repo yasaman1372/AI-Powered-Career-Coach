@@ -2,6 +2,10 @@
 
 An AI career coach for mock interviews, CV feedback, career advice, personalized learning roadmaps, job search, and tailoring a CV to a selected job listing.
 
+## Live app
+
+[Try AI-Powered Career Coach](https://ai-powered-career-coach-beryl.vercel.app/)
+
 ## Features
 
 - **Mock interview:** guided setup, realistic interview questions, answer evaluation, skip, and end controls.
